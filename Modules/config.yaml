@@ -9,24 +9,15 @@
                                 "is_pretrained": True,
                                 "is_freeze": False,
                         },
-                        "n_cls": 10,
-                        "is_caps": False,
-                        "caps": {
-                                "mode": 1,
-                                "cap_dims": 4,
-                                "routing": {
-                                        "type": "dynamic",
-                                        "params": [3, 0.1, 1.5]
-                                        }
-                                }
-                        },
+                        "n_cls": 10
+                },
                 "dataset_settings": {
                         "name": "CIFAR10",
                         "path": "data/",
                         "img_size": 224,
                         },
                 "training_settings":{
-                        "gpu_ids": [1],
+                        "gpu_ids": [0],
                         "n_gpu": 1,
                         "loss": "ce",
                         "ckpt_path": "./mode/test",
@@ -52,16 +43,8 @@
                                 "is_pretrained": True,
                                 "is_freeze": False, 
                         },
-                        "n_cls": 2,
-                        "is_caps": True,
-                        "caps": {
-                                "mode": 1,
-                                "cap_dims": 4,
-                                "routing": {
-                                        'type': "fuzzy",
-                                        'params': [3, 0.01, 1.5]}
-                                }
-                        },
+                        "n_cls": 2
+                },
                 "dataset_settings": {
                         "name": "LungCT-Scan",
                         "path": "data/CT-scan-dataset",
@@ -94,16 +77,8 @@
                                 "is_pretrained": True,
                                 "is_freeze": False, 
                         },
-                        "n_cls": 2,
-                        "is_caps": True,
-                        "caps": {
-                                "mode": 1,
-                                "cap_dims": 4,
-                                "routing": {
-                                        'type': "dynamic",
-                                        'params': [3, 0.01, 1.5]}
-                                }
-                        },
+                        "n_cls": 2
+                },
                 "dataset_settings": {
                         "name": "PennFudan",
                         "path": "data/PennFudanPed",

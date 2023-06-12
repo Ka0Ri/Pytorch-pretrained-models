@@ -55,7 +55,7 @@ WEIGHTS = {"resnet-s": ResNet18_Weights, "resnet-m": ResNet50_Weights, "resnet-l
            "swin-s": Swin_T_Weights, "swin-m": Swin_S_Weights, "swin-l": Swin_B_Weights
         }
 
-class CapsuleWrappingClassifier(nn.Module):
+class WrappingClassifier(nn.Module):
     '''
     Wrapping Classification with customized headers
     The given models can be used in reference mode (is_full = True)
@@ -68,7 +68,7 @@ class CapsuleWrappingClassifier(nn.Module):
     '''
     def __init__(self, model_configs=None):
 
-        super(CapsuleWrappingClassifier, self).__init__()
+        super(WrappingClassifier, self).__init__()
         # Parse parameters
         self.backbone_name = model_configs['backbone']['name']
         self.is_full = model_configs['backbone']['is_full']

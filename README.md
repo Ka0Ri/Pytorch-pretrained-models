@@ -95,11 +95,6 @@ The configurations, a [config.yaml](Modules/config.yaml), encompassing the model
 | is_pretrained |  pretrained weights  | architect_settings/backbone  | Bool |
 | is_freeze | Freeze weights  | architect_settings/backbone  | Bool |
 | n_cls | num classes  | architect_settings | int |
-| is_caps | Use Capsule head  | architect_settings  | Bool |
-| mode | Mode of Capsule  | architect_settings/ caps  | int: 1 (add a hidden layer), 2 (split channel to get capsule), 3 (split channel and shuffle to get capsule) |
-| cap_dims | Dimension of Cap Vector  | architect_settings/caps  | int |
-| type | Routing Type  | architect_settings/caps/routing  | str: "fuzzy", "dynamic", "em" |
-| params | arguments of Routing method  | architect_settings/backbone/caps  | list: [iters=3, lam=0.01, m=1.5] |
 | `Dataset` |
 | name | Dataset name  | dataset_settings | string: "LungCT-Scan", "CIFAR10", "PennFudan" |
 | path | path to dataset  | dataset_settings  | string |
