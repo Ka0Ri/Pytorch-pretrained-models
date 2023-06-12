@@ -6,7 +6,7 @@
                         "backbone": {
                                 "name": "swin-s",
                                 "is_full": False,
-                                "is_pretrained": True,
+                                "is_pretrained": False,
                                 "is_freeze": False,
                         },
                         "n_cls": 10
