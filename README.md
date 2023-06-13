@@ -25,7 +25,7 @@ It facilitates three distinct modes of operation: (1) inference utilizing the co
 - `Detector.py`: [WrappingDetector](Modules/Detector.py#L30) Wrapping Head for object detection task.
 - `Segment.py`: [WrappingSegment](Modules/Segment.py#L22) Wrapping Head for semantic segmentation task.
 
-![alt text](image\test.png)
+![alt text](image/test.png)
 
 <table>
 <tr>
