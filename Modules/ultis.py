@@ -14,7 +14,7 @@ import PIL.Image as Image
 def normalize_image(image):
     xmin = np.min(image)
     xmax = np.max(image)
-    return (image - xmin)/ (xmax - xmin)
+    return (image - xmin)/(xmax - xmin + 10e-6)
 
 def collate_fn(batch):
     return tuple(zip(*batch))
@@ -30,9 +30,9 @@ class Standardize(object):
         return self.__class__.__name__ + '()'
 
 class LungCTscan(Dataset):
-    def __init__(self, data_dir, transform=None, imgsize=224):
-        self.img_list = sorted(glob.glob(data_dir + '/2d_images/*.tif'))
-        self.mask_list = sorted(glob.glob(data_dir + '/2d_masks/*.tif'))
+    def __init__(self, data_path, transform=None, imgsize=224):
+        self.img_list = sorted(glob.glob(data_path + '/2d_images/*.tif'))
+        self.mask_list = sorted(glob.glob(data_path + '/2d_masks/*.tif'))
         self.transform = transform
         if(self.transform is None):
             self.transformImg = partial(SemanticSegmentation, resize_size=imgsize)()
@@ -64,13 +64,13 @@ class LungCTscan(Dataset):
 
 
 class PennFudanDataset(torch.utils.data.Dataset):
-    def __init__(self, root, transform=None, imgsize=224):
-        self.root = root
+    def __init__(self, data_path, transform=None, imgsize=224):
+        self.root = data_path
         self.transform = transform
         # load all image files, sorting them to
         # ensure that they are aligned
-        self.imgs = list(sorted(os.listdir(os.path.join(root, "PNGImages"))))
-        self.masks = list(sorted(os.listdir(os.path.join(root, "PedMasks"))))
+        self.imgs = list(sorted(os.listdir(os.path.join(data_path, "PNGImages"))))
+        self.masks = list(sorted(os.listdir(os.path.join(data_path, "PedMasks"))))
 
         if(self.transform is None):
             self.transform = partial(ObjectDetection)()
@@ -170,6 +170,86 @@ class CIFAR10read(Dataset):
         images = self.transform(images)
         return images, labels
 
+def rgb_to_2D_label(label):
+ 
+    Land = np.array(tuple(int('#8429F6'.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))) #132, 41, 246
+    Road = np.array(tuple(int('#6EC1E4'.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))) #110, 193, 228
+    Vegetation = np.array(tuple(int('FEDD3A'.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))) #254, 221, 58
+    Water = np.array(tuple(int('E2A929'.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))) #226, 169, 41
+    Building = np.array(tuple(int('#3C1098'.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))) # 60, 16, 152
+    Unlabeled = np.array(tuple(int('#9B9B9B'.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))) #155, 155, 155
+
+    label_seg = np.zeros(label.shape, dtype=np.uint8)
+    label_seg [np.all(label == Building, axis = -1)] = 2
+    label_seg [np.all(label == Unlabeled, axis = -1)] = 0
+    label_seg [np.all(label == Land, axis = -1)] = 0
+    label_seg [np.all(label == Road, axis = -1)] = 1  
+    label_seg [np.all(label == Vegetation, axis = -1)] = 0   
+    label_seg [np.all(label == Water, axis = -1)] = 0
+   
+    label_seg = label_seg[:,:,0]
+    
+    return label_seg
+
+
+class DubaiAerialread(Dataset):
+    '''
+    Dubai Aerial Imagery dataset:
+    https://www.kaggle.com/code/gamze1aksu/semantic-segmentation-of-aerial-imagery
+    The dataset consists of aerial imagery of Dubai obtained by MBRSC satellites and annotated 
+    with pixel-wise semantic segmentation in 6 classes. The total volume of the dataset is 72 images 
+    grouped into 6 larger tiles. The classes are:
+    Building: #3C1098
+    Land (unpaved area): #8429F6
+    Road: #6EC1E4
+    Vegetation: #FEDD3A
+    Water: #E2A929
+    Unlabeled: #9B9B9B
+    '''
+    def __init__(self, data_path, transform=None, imgsize=224):
+        input_images = []
+        input_labels = []
+        self.transform = transform
+        for path, _, _ in os.walk(data_path):
+            dirname = path.split(os.path.sep)[-1]
+            if dirname == 'images':
+                input_images += [os.path.join(path, file) for file in os.listdir(path)]
+            if dirname == 'masks':
+                input_labels += [os.path.join(path, file) for file in os.listdir(path)]
+        
+        self.img_list = sorted(input_images)
+        self.mask_list = sorted(input_labels)
+        if(self.transform is None):
+            self.transformImg = partial(SemanticSegmentation, resize_size=(imgsize, imgsize))()
+            self.transformAnn = transforms.Compose([transforms.Resize((imgsize, imgsize)),
+                                                    transforms.ToTensor()])
+
+    def __len__(self):
+        return len(self.img_list)
+    
+    def __getitem__(self, idx):
+        image_path = self.img_list[idx]
+        mask_path = self.mask_list[idx]
+
+        # load image
+        image = Image.open(image_path).convert('RGB')
+    
+        # load image
+        mask = Image.open(mask_path).convert('RGB')
+        mask = rgb_to_2D_label(np.asarray(mask))
+
+
+        if self.transform is None:
+            image = self.transformImg(image)
+            mask = Image.fromarray(np.uint8(mask))
+            mask = self.transformAnn(mask)
+        else:
+            image = np.asarray(image)
+            transformed = self.transform(image=image, mask=mask)
+            image = transformed["image"]
+            mask = transformed["mask"]
+
+        return image, mask.squeeze(0).long()
     
 #---------------------------------------lOSS FUNCTION-----------------------------------------------
 
