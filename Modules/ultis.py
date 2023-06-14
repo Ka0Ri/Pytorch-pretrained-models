@@ -249,7 +249,7 @@ class DubaiAerialread(Dataset):
             image = transformed["image"]
             mask = transformed["mask"]
 
-        return image, mask.squeeze(0).long()
+        return image, mask.squeeze(0)
     
 #---------------------------------------lOSS FUNCTION-----------------------------------------------
 

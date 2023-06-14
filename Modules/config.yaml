@@ -38,7 +38,7 @@
                 "architect_settings" : {
                         "name": "model-test",
                         "backbone": {
-                                "name": "fcn-m",
+                                "name": "deeplab-m",
                                 "is_full": False,
                                 "is_pretrained": True,
                                 "is_freeze": False, 
