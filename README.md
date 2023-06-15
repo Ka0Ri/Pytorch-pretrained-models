@@ -62,7 +62,7 @@ Examples of training Wrapping Network can be found in [ults.py](Modules/ultis.py
 - `ultis.py`: Three pre-defined datasets have been established, each serving as a demonstration for the training-testing process of a specific task, [CIFAR10](Modules/ultis.py#) for classification, [Lung CT-scan](Modules/ultis.py) for object detection, and [PennFudan](Modules/ultis.py) for binary object segmentation.
 - Notebook `examples`: Our main module is [ModulesModel](examples.ipynb) that based on [pytorch-lightning](https://lightning.ai/pages/open-source/) and logged by [neptune-ai](https://neptune.ai/). As shown in the Figure above, we logged hyperparameters, metrics, and results from each run.
 
-![alt text](image/logging.png)
+![alt text](image/neptune.jpg)
 
 ```
 Modify in Examples Notebook
