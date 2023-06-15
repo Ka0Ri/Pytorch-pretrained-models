@@ -70,11 +70,13 @@ Modify in Examples Notebook
 #
 
 ## Testing Interface
-We deploy (demo) our model using [Gradio](https://gradio.app/), which supports  activation map visualization and see the results
+We deploy (demo) our model using [Gradio](https://gradio.app/), which supports to visualize results from 3 tasks: classification, detection, and segmentation, depending on the selected model.
+
+![alt text](image/gradio.png)
+
 ```
 Modify in Example Notebook
 ```
-![alt text](image/gradio.png)
 
 #
 ## Configuration (Config file)
