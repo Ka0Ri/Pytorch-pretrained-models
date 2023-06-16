@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import random
 from torch.utils.data import DataLoader, random_split, Subset
-from torchvision.utils import make_grid, draw_bounding_boxes
+from torchvision.utils import make_grid, draw_bounding_boxes, draw_segmentation_masks
 
 from Modules.Classifier import WrappingClassifier
 from Modules.Segment import WrappingSegment
