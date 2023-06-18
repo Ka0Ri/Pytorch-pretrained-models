@@ -44,11 +44,11 @@
                                 "is_pretrained": True,
                                 "is_freeze": False, 
                         },
-                        "n_cls": 3
+                        "n_cls": 2
                 },
                 "dataset_settings": {
-                        "name": "Dubai",
-                        "path": "data/Semantic segmentation dataset",
+                        "name": "LungCT-Scan",
+                        "path": "data/CT-scan-dataset",
                         "img_size": 224,
                         },
                 "training_settings":{

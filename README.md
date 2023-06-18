@@ -55,6 +55,7 @@ It facilitates three distinct modes of operation: (1) inference utilizing the co
 | `Segmentation` | None| dice | milions |
 | fcn | [Fully CNN](https://arxiv.org/abs/1411.4038)  |  79.81 | m: 28.0, l: 47.0 |
 | deeplab | [Atrous Convolution](https://arxiv.org/abs/1706.05587) | 81.08  | m: 23.5, l: 87.9 |
+| maskrcnn | [Masked RCNN](https://arxiv.org/abs/1703.06870) |  | m: 39.5, l:  |
 #
 ## Training Interface
 Examples of training Wrapping Network can be found in [ults.py](Modules/ultis.py) and Notebook [examples](examples.ipynb), we config hyper-parameters in [config.yaml](Modules/config.yaml) file

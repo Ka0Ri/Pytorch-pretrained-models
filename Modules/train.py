@@ -323,8 +323,7 @@ class Model(LightningModule):
             self.valid_metrics.update(y_pred.cpu(), y.cpu().long())
         
             if(self.task == 'segmentation'):
-                y_pred = torch.argmax(y_hat, dim=1)
-                self.validation_step_outputs.append({"loss": loss.item(), "predictions": y_pred.unsqueeze(1), "targets": y.unsqueeze(1)})
+                self.validation_step_outputs.append({"loss": loss.item(), "image": x, "predictions": y_pred, "targets": y})
             else:
                 self.validation_step_outputs.append({"loss": loss.item()})
 
@@ -339,17 +338,23 @@ class Model(LightningModule):
            
         elif(self.task == 'segmentation'):
             self.log("metrics/epoch/val_dice", self.valid_metrics.compute())
-            loss =[outputs['loss'] for outputs in self.validation_step_outputs]
+            loss =[output['loss'] for output in self.validation_step_outputs]
             self.log('metrics/epoch/val_loss', sum(loss) / len(loss))
 
-            outputs = self.validation_step_outputs
-            reconstructions = make_grid(outputs[0]["predictions"], nrow=int(self.train_settings["n_batch"] ** 0.5))
-            reconstructions = normalize_image(reconstructions.cpu().numpy().transpose(1, 2, 0))
+            outputs = self.validation_step_outputs[0]
+            image, predictions, targets = outputs["image"].cpu(), outputs["predictions"].cpu(), outputs["targets"].cpu()
+            inv_normalize = transforms.Normalize(
+                    mean=[-0.485/0.229, -0.456/0.224, -0.406/0.255],
+                    std=[1/0.229, 1/0.224, 1/0.255]
+                )
+            images = [inv_normalize(d) for d in image]
+            classes_masks = predictions.argmax(1) == torch.arange(predictions.shape[1])[:, None, None, None]
+            reconstructions = [draw_segmentation_masks((image * 255.).to(torch.uint8), masks=mask, alpha=.8)
+                               for image, mask in zip(images, classes_masks.swapaxes(0, 1))]
+            reconstructions = make_grid(torch.stack(reconstructions), nrow= int(self.train_settings['n_batch'] ** 0.5))
+            reconstructions = reconstructions.numpy().transpose(1, 2, 0) / 255
             self.logger.experiment["val/reconstructions"].append(File.as_image(reconstructions))
 
-            targets = make_grid(outputs[0]["targets"], nrow=int(self.train_settings["n_batch"] ** 0.5))
-            targets = normalize_image(targets.cpu().numpy().transpose(1, 2, 0))
-            self.logger.experiment["val/targets"].append(File.as_image(targets))
             self.validation_step_outputs.clear()
         
         elif(self.task == 'detection'):
