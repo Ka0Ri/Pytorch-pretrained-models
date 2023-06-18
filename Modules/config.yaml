@@ -74,7 +74,7 @@
                 "architect_settings" : {
                         "name": "model-test",
                         "backbone": {
-                                "name": "fasterrcnn-m",
+                                "name": "maskrcnn-s",
                                 "is_full": False,
                                 "is_pretrained": True,
                                 "is_freeze": False, 

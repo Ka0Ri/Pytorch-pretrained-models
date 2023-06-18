@@ -362,15 +362,20 @@ class Model(LightningModule):
             #no validation loss
 
             outputs = self.validation_step_outputs[-1]
-            image, predictions, targets = outputs["image"], outputs["predictions"], outputs["targets"]
-            reconstructions = draw_bounding_boxes((image * 255.).to(torch.uint8), 
-                                                boxes=predictions["boxes"][:5],
-                                                colors="red",
-                                                width=5, font_size=20)
-            reconstructions = draw_bounding_boxes(reconstructions, 
-                                                boxes=targets["boxes"][:5],
-                                                colors="blue",
-                                                width=5, font_size=20)
+            image, predictions, targets = outputs["image"].cpu(), outputs["predictions"], outputs["targets"]
+            if("maskrcnn" in self.architect_settings['backbone']['name']):
+                boolean_masks = predictions['masks'][predictions['scores'] > .75] > 0.5
+                reconstructions = draw_segmentation_masks((image * 255.).to(torch.uint8), 
+                                                    boolean_masks.cpu().squeeze(1), alpha=0.9)
+            else:
+                reconstructions = draw_bounding_boxes((image * 255.).to(torch.uint8), 
+                                                    boxes=predictions["boxes"][:5],
+                                                    colors="red",
+                                                    width=5)
+                reconstructions = draw_bounding_boxes(reconstructions, 
+                                                    boxes=targets["boxes"][:5],
+                                                    colors="blue",
+                                                    width=5)
             reconstructions = reconstructions.cpu().numpy().transpose(1, 2, 0) / 255.
             self.logger.experiment["val/reconstructions"].append(File.as_image(reconstructions))
             self.validation_step_outputs.clear()
