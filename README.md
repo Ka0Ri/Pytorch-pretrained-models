@@ -16,7 +16,7 @@ conda activate ENV_NAME
 ```
 - Install dependencies: 
 ```
-
+conda env create -f environment.yml
 ```
 #
 
