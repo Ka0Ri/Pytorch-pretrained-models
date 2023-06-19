@@ -2,22 +2,21 @@ name: pytorch
 channels:
   - pytorch
   - nvidia
-  - defaults
+  - conda-forge
 dependencies:
-  - python=3.9
   - pip
   - pytorch-cuda=11.6
   - torchvision
+  - torchmetrics
   - pytorch
-  - neptune
   - pip:
-    - gradio
-    - ipython
-    - scikit-learn
-    - scipy
     - numpy
+    - scipy
+    - scikit-learn
+    - matplotlib
+    - gradio
+    - ipythons
     - opencv-python
     - pillow
-    - matplotlib
-    - torchmetrics
     - pytorch-lightning
+    - neptune
