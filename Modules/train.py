@@ -274,10 +274,12 @@ class Model(LightningModule):
         else:
             raise NotImplementedError()
 
-        # Loss selection
-        self.loss = get_loss_function(self.train_settings['loss'])
-      
-        self.validation_step_outputs = []
+    def setup(self, stage: str):
+        
+        if stage == "fit":
+            # Loss selection
+            self.loss = get_loss_function(self.train_settings['loss'])
+            self.validation_step_outputs = []
     
     def forward(self, x, y=None):
         return self.model(x, y)
