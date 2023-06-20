@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 import random
-from torch.utils.data import DataLoader, random_split, Subset
+from torch.utils.data import DataLoader
 from torchvision.utils import make_grid, draw_bounding_boxes, draw_segmentation_masks
 
 from Modules.Classifier import WrappingClassifier
@@ -181,6 +181,7 @@ class DataModule(LightningDataModule):
     Data Module for Train/Val/Test data loadding
     Args: 
         data_settings, training_settings: hyperparameter settings
+        transform: data augmentation
     Returns:
         Train/Test/Val data loader
     '''
@@ -192,51 +193,34 @@ class DataModule(LightningDataModule):
         self.img_size = data_settings['img_size']
         self.batch_size = training_settings['n_batch']
         self.num_workers = training_settings['num_workers']
-        self.train_transform, self.val_transform = transform
+
+        assert self.dataset in ["CIFAR10", "LungCT-Scan", "Dubai", "PennFudan"], "Dataset not supported"
+        self.data_class = {
+            "CIFAR10": CIFAR10read,
+            "LungCT-Scan": LungCTscan,
+            "Dubai": DubaiAerialread,
+            "PennFudan": PennFudanDataset
+        }
         self.class_list = None
         self.collate_fn = None
+        if(self.dataset == 'PennFudan'):
+            self.collate_fn = collate_fn
 
+        self.train_transform, self.val_transform = transform
+        
     def setup(self, stage: str):
 
         if stage == "fit":
-            if self.dataset == 'CIFAR10':
-                self.Train_dataset = CIFAR10read(mode="train", data_path=self.root_dir, 
-                                                transform=self.train_transform, imgsize=self.img_size)
-                self.Val_dataset =  CIFAR10read(mode="val", data_path=self.root_dir, 
-                                                transform=self.val_transform, imgsize=self.img_size)
-            elif self.dataset == 'LungCT-Scan':
-                train_dataset = LungCTscan(data_path=self.root_dir, transform=self.train_transform, imgsize=self.img_size)
-                self.Train_dataset = Subset(train_dataset, range(int(len(train_dataset) * 0.8)))
-                val_dataset = LungCTscan(data_path=self.root_dir, transform=self.val_transform, imgsize=self.img_size)
-                self.Val_dataset = Subset(val_dataset, range(int(len(val_dataset) * 0.8), len(val_dataset)))
-            elif self.dataset == 'Dubai':
-                train_dataset = DubaiAerialread(data_path=self.root_dir, transform=self.train_transform, imgsize=self.img_size)
-                self.Train_dataset = Subset(train_dataset, range(int(len(train_dataset) * 0.8)))
-                val_dataset = DubaiAerialread(data_path=self.root_dir, transform=self.val_transform, imgsize=self.img_size)
-                self.Val_dataset = Subset(val_dataset, range(int(len(val_dataset) * 0.8), len(val_dataset)))
-            elif self.dataset == 'PennFudan':
-                self.collate_fn = collate_fn
-                train_dataset = PennFudanDataset(data_path=self.root_dir, transform=self.train_transform, imgsize=self.img_size)
-                self.Train_dataset = Subset(train_dataset, range(int(len(train_dataset) * 0.8)))
-                val_dataset = PennFudanDataset(data_path=self.root_dir, transform=self.val_transform, imgsize=self.img_size)
-                self.Val_dataset = Subset(val_dataset, range(int(len(val_dataset) * 0.8), len(val_dataset)))
+            self.Train_dataset = self.data_class[self.dataset](mode="train", data_path=self.root_dir,
+                                                imgsize=self.img_size, transform=self.train_transform)
+            self.Val_dataset = self.data_class[self.dataset](mode="val", data_path=self.root_dir,
+                                                imgsize=self.img_size, transform=self.val_transform)
                 
         # Assign test dataset for use in dataloader(s)
         if stage == "test":
-            if self.dataset == 'CIFAR10':
-                self.Test_dataset =  CIFAR10read(mode="test", data_path=self.root_dir, 
-                                                transform=self.val_transform, imgsize=self.img_size)
-            elif self.dataset == 'LungCT-Scan':
-                dataset = LungCTscan(data_path=self.root_dir, transform=self.val_transform, imgsize=self.img_size)
-                self.Test_dataset = Subset(dataset, range(len(dataset)))
-            elif self.dataset == 'Dubai':
-                dataset = DubaiAerialread(data_path=self.root_dir, transform=self.val_transform, imgsize=self.img_size)
-                self.Test_dataset = Subset(dataset, range(len(dataset)))
-            elif self.dataset == 'PennFudan':
-                self.collate_fn = collate_fn
-                dataset = PennFudanDataset(data_path=self.root_dir, transform=self.val_transform, imgsize=self.img_size)
-                self.Test_dataset = Subset(dataset, range(len(dataset)))
-
+            self.Test_dataset = self.data_class[self.dataset](mode="val", data_path=self.root_dir,
+                                                imgsize=self.img_size, transform=self.val_transform)
+           
     def train_dataloader(self):
         return DataLoader(self.Train_dataset, batch_size=self.batch_size, shuffle=True, 
                           num_workers=self.num_workers, collate_fn=self.collate_fn)
@@ -275,7 +259,6 @@ class Model(LightningModule):
             raise NotImplementedError()
 
     def setup(self, stage: str):
-        
         if stage == "fit":
             # Loss selection
             self.loss = get_loss_function(self.train_settings['loss'])

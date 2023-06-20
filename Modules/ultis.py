@@ -30,9 +30,18 @@ class Standardize(object):
         return self.__class__.__name__ + '()'
 
 class LungCTscan(Dataset):
-    def __init__(self, data_path, transform=None, imgsize=224):
-        self.img_list = sorted(glob.glob(data_path + '/2d_images/*.tif'))
-        self.mask_list = sorted(glob.glob(data_path + '/2d_masks/*.tif'))
+    def __init__(self, mode, data_path, imgsize=224, transform=None):
+        img_list = sorted(glob.glob(data_path + '/2d_images/*.tif'))
+        mask_list = sorted(glob.glob(data_path + '/2d_masks/*.tif'))
+        
+        n = len(img_list)
+        if(mode == 'train'):
+            self.img_list = img_list[:int(n*0.8)]
+            self.mask_list = mask_list[:int(n*0.8)]
+        elif(mode == 'val'):
+            self.img_list = img_list[int(n*0.8):]
+            self.mask_list = mask_list[int(n*0.8):]
+
         self.transform = transform
         if(self.transform is None):
             self.transformImg = partial(SemanticSegmentation, resize_size=imgsize)()
@@ -60,20 +69,30 @@ class LungCTscan(Dataset):
             image = self.transform(image)
             mask = self.transform(mask)
 
-        return image, mask.squeeze(0).long()
-
+        return image, mask.squeeze(0)
 
 class PennFudanDataset(torch.utils.data.Dataset):
-    def __init__(self, data_path, transform=None, imgsize=224):
+    def __init__(self, mode, data_path, imgsize=224, transform=None):
         self.root = data_path
         self.transform = transform
         # load all image files, sorting them to
         # ensure that they are aligned
-        self.imgs = list(sorted(os.listdir(os.path.join(data_path, "PNGImages"))))
-        self.masks = list(sorted(os.listdir(os.path.join(data_path, "PedMasks"))))
+        imgs = list(sorted(os.listdir(os.path.join(data_path, "PNGImages"))))
+        masks = list(sorted(os.listdir(os.path.join(data_path, "PedMasks"))))
+
+        n = len(imgs)
+        if(mode == 'train'):
+            self.imgs = imgs[:int(n*0.8)]
+            self.masks = masks[:int(n*0.8)]
+        elif(mode == 'val'):
+            self.imgs = imgs[int(n*0.8):]
+            self.masks = masks[int(n*0.8):]
 
         if(self.transform is None):
             self.transform = partial(ObjectDetection)()
+    
+    def __len__(self):
+        return len(self.imgs)
 
     def __getitem__(self, idx):
         # load images and masks
@@ -128,13 +147,10 @@ class PennFudanDataset(torch.utils.data.Dataset):
         img = self.transform(img)
 
         return img, target
-
-    def __len__(self):
-        return len(self.imgs)
         
 class CIFAR10read(Dataset):
     """Customized dataset loader"""
-    def __init__(self, mode, data_path, transform=None, imgsize=224):
+    def __init__(self, mode, data_path, imgsize=224, transform=None):
 
         if(mode == 'test'):
             dataset = CIFAR10(root=data_path, download=True, train=False)
@@ -142,15 +158,15 @@ class CIFAR10read(Dataset):
             dataset = CIFAR10(root=data_path, download=True, train=True)
         data = getattr(dataset, 'data')
         labels = getattr(dataset, 'targets')
+        n = len(data)
         if(mode == 'train'):
-            data = data[:40000]
-            labels = labels[:40000]
+            self.input_images = np.array(data[:int(n * 0.8)])
+            self.input_labels = np.array(labels[:int(n * 0.8)])
         elif(mode == 'val'):
-            data = data[40000:50000]
-            labels = labels[40000:50000]
+            self.input_images = np.array(data[int(n * 0.8):])
+            self.input_labels = np.array(labels[int(n * 0.8):])
+    
         self.transform = transform
-        self.input_images = np.array(data, np.uint8)
-        self.input_labels = np.array(labels)
         if(self.transform == None):
             self.transform = transforms.Compose([
                 transforms.ToPILImage(),
@@ -206,7 +222,7 @@ class DubaiAerialread(Dataset):
     Water: #E2A929
     Unlabeled: #9B9B9B
     '''
-    def __init__(self, data_path, transform=None, imgsize=224):
+    def __init__(self, mode, data_path, transform=None, imgsize=224):
         input_images = []
         input_labels = []
         self.transform = transform
@@ -217,8 +233,17 @@ class DubaiAerialread(Dataset):
             if dirname == 'masks':
                 input_labels += [os.path.join(path, file) for file in os.listdir(path)]
         
-        self.img_list = sorted(input_images)
-        self.mask_list = sorted(input_labels)
+        img_list = sorted(input_images)
+        mask_list = sorted(input_labels)
+
+        n = len(img_list)
+        if(mode == 'train'):
+            self.img_list = img_list[:int(n*0.8)]
+            self.mask_list = mask_list[:int(n*0.8)]
+        elif(mode == 'val'):
+            self.img_list = img_list[int(n*0.8):]
+            self.mask_list = mask_list[int(n*0.8):]
+
         if(self.transform is None):
             self.transformImg = partial(SemanticSegmentation, resize_size=(imgsize, imgsize))()
             self.transformAnn = transforms.Compose([transforms.Resize((imgsize, imgsize)),
@@ -233,11 +258,9 @@ class DubaiAerialread(Dataset):
 
         # load image
         image = Image.open(image_path).convert('RGB')
-    
-        # load image
+        # load mask
         mask = Image.open(mask_path).convert('RGB')
         mask = rgb_to_2D_label(np.asarray(mask))
-
 
         if self.transform is None:
             image = self.transformImg(image)
