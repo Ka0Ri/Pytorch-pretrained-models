@@ -275,8 +275,7 @@ class Model(LightningModule):
         else:
             y_hat = self(x)
             loss = self.loss(y_hat, y.long())
-            y_pred = torch.softmax(y_hat, dim=1)
-            self.train_metrics.update(y_pred.cpu(), y.cpu().long())
+            self.train_metrics.update(y_hat.cpu(), y.cpu().long())
 
         self.log("metrics/batch/train_loss", loss, prog_bar=False)
 
@@ -304,11 +303,10 @@ class Model(LightningModule):
         else:
             y_hat = self(x)
             loss = self.loss(y_hat, y.long())
-            y_pred = torch.softmax(y_hat, dim=-1)
-            self.valid_metrics.update(y_pred.cpu(), y.cpu().long())
+            self.valid_metrics.update(y_hat.cpu(), y.cpu().long())
         
             if(self.task == 'segmentation'):
-                self.validation_step_outputs.append({"loss": loss.item(), "image": x, "predictions": y_pred, "targets": y})
+                self.validation_step_outputs.append({"loss": loss.item(), "image": x, "predictions": y_hat, "targets": y})
             else:
                 self.validation_step_outputs.append({"loss": loss.item()})
 
@@ -327,12 +325,7 @@ class Model(LightningModule):
             self.log('metrics/epoch/val_loss', sum(loss) / len(loss))
 
             outputs = self.validation_step_outputs[0]
-            image, predictions, targets = outputs["image"].cpu(), outputs["predictions"].cpu(), outputs["targets"].cpu()
-            inv_normalize = transforms.Normalize(
-                    mean=[-0.485/0.229, -0.456/0.224, -0.406/0.255],
-                    std=[1/0.229, 1/0.224, 1/0.255]
-                )
-            images = [inv_normalize(d) for d in image]
+            images, predictions, targets = outputs["image"].cpu(), outputs["predictions"].cpu(), outputs["targets"].cpu()
             classes_masks = predictions.argmax(1) == torch.arange(predictions.shape[1])[:, None, None, None]
             reconstructions = [draw_segmentation_masks((image * 255.).to(torch.uint8), masks=mask, alpha=.8)
                                for image, mask in zip(images, classes_masks.swapaxes(0, 1))]
@@ -354,15 +347,16 @@ class Model(LightningModule):
                                                     boolean_masks.cpu().squeeze(1), alpha=0.9)
             else:
                 reconstructions = draw_bounding_boxes((image * 255.).to(torch.uint8), 
-                                                    boxes=predictions["boxes"][:5],
+                                                    boxes=predictions["boxes"][:5].cpu(),
                                                     colors="red",
                                                     width=5)
                 reconstructions = draw_bounding_boxes(reconstructions, 
-                                                    boxes=targets["boxes"][:5],
+                                                    boxes=targets["boxes"][:5].cpu(),
                                                     colors="blue",
                                                     width=5)
-            reconstructions = reconstructions.cpu().numpy().transpose(1, 2, 0) / 255.
+            reconstructions = reconstructions.numpy().transpose(1, 2, 0) / 255.
             self.logger.experiment["val/reconstructions"].append(File.as_image(reconstructions))
+
             self.validation_step_outputs.clear()
 
         self.valid_metrics.reset()
