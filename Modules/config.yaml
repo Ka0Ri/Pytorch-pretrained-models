@@ -1,6 +1,7 @@
 {
         # hyperparams for training
         "classifier": {
+                "task": "classification",
                 "architect_settings": {
                         "name": "classifier-test",
                         "backbone": {
@@ -36,6 +37,7 @@
         },
         
         "segment": {
+                "task": "segmentation",
                 "architect_settings" : {
                         "name": "model-test",
                         "backbone": {
@@ -71,10 +73,11 @@
         },
 
         "detect": {
+                "task": "detection",
                 "architect_settings" : {
                         "name": "model-test",
                         "backbone": {
-                                "name": "maskrcnn-m",
+                                "name": "fasterrcnn-m",
                                 "is_full": False,
                                 "is_pretrained": True,
                                 "is_freeze": False, 
@@ -92,8 +95,8 @@
                         "loss": "none",
                         "ckpt_path": "./mode/test",
                         "n_epoch": 50,
-                        "n_batch": 2,
-                        "num_workers": 12,
+                        "n_batch": 4,
+                        "num_workers": 0,
                         "optimizer": "adam",
                         "lr_scheduler": "step",
                         "early_stopping": False,

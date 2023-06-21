@@ -3,6 +3,7 @@ import torch
 import random
 from torch.utils.data import DataLoader
 from torchvision.utils import make_grid, draw_bounding_boxes, draw_segmentation_masks
+import torch.nn.functional as F
 
 from Modules.Classifier import WrappingClassifier
 from Modules.Segment import WrappingSegment
@@ -218,7 +219,7 @@ class DataModule(LightningDataModule):
                 
         # Assign test dataset for use in dataloader(s)
         if stage == "test":
-            self.Test_dataset = self.data_class[self.dataset](mode="val", data_path=self.root_dir,
+            self.Test_dataset = self.data_class[self.dataset](mode="test", data_path=self.root_dir,
                                                 imgsize=self.img_size, transform=self.val_transform)
            
     def train_dataloader(self):
@@ -234,27 +235,30 @@ class DataModule(LightningDataModule):
                           num_workers=self.num_workers, collate_fn=self.collate_fn)
     
 class Model(LightningModule):
-    def __init__(self, PARAMS, task=None):
+    def __init__(self, PARAMS):
         super().__init__()
         self.save_hyperparameters()
 
         self.architect_settings = PARAMS['architect_settings']
         self.train_settings = PARAMS['training_settings']
         self.dataset_settings = PARAMS['dataset_settings']
-        self.task = task
+        self.task = PARAMS['task']
         # Model selection
         if(self.task == 'classification'):
             self.model = WrappingClassifier(model_configs=self.architect_settings)
             self.train_metrics = torchmetrics.Accuracy(task='multiclass', num_classes=self.architect_settings['n_cls'])
             self.valid_metrics = torchmetrics.Accuracy(task='multiclass', num_classes=self.architect_settings['n_cls'])
+            self.metrics_name = 'accuracy'
         elif(self.task == 'segmentation'):
             self.model = WrappingSegment(model_configs=self.architect_settings)
             self.train_metrics = torchmetrics.Dice(num_classes=self.architect_settings['n_cls'])
             self.valid_metrics = torchmetrics.Dice(num_classes=self.architect_settings['n_cls'])
+            self.metrics_name = 'dice'
         elif(self.task == 'detection'):
             self.model = WrappingDetector(model_configs=self.architect_settings)
             self.train_metrics = MeanAveragePrecision()
             self.valid_metrics = MeanAveragePrecision()
+            self.metrics_name = 'mAP'
         else:
             raise NotImplementedError()
 
@@ -268,98 +272,89 @@ class Model(LightningModule):
         return self.model(x, y)
     
     def training_step(self, batch, batch_idx):
-        x, y = batch
+        x, y, _ = batch
         if(self.task == 'detection'):
             loss_dict = self(x, y)
             loss = sum(loss for loss in loss_dict.values())
         else:
+            y = y.long()
             y_hat = self(x)
-            loss = self.loss(y_hat, y.long())
-            self.train_metrics.update(y_hat.cpu(), y.cpu().long())
+            loss = self.loss(y_hat, y)
+            self.train_metrics.update(y_hat.cpu(), y.cpu())
 
         self.log("metrics/batch/train_loss", loss, prog_bar=False)
 
         return loss
 
     def on_train_epoch_end(self):
-       
-        if(self.task == 'classification'):
-            self.log("metrics/epoch/train_acc", self.train_metrics.compute())
-        elif(self.task == 'segmentation'):
-            self.log("metrics/epoch/train_dice", self.train_metrics.compute())
-    
+
+        metrics = self.train_metrics.compute()
+        if(self.task == 'detection'):
+            metrics = metrics['map']
+        self.log(f"metrics/epoch/train_{self.metrics_name}", metrics)
         self.train_metrics.reset()
 
-    def validation_step(self, batch, batch_idx):
-        x, y = batch
-        
+    def _shared_eval_step(self, batch, batch_idx):
+        x, y, images = batch
+        y_hat = self(x)
         if(self.task == 'detection'):
-            y_hat = self(x)
-            y_pred = [{k: v for k, v in t.items()} for t in y_hat]
-            targets = [{k: v for k, v in t.items()} for t in y]
-
-            self.valid_metrics.update(y_pred, targets)
-            self.validation_step_outputs.append({"image": x[0], "predictions": y_pred[0], "targets": targets[0]})
+            y_pred = [{k: v.cpu() for k, v in t.items()} for t in y_hat]
+            targets = [{k: v.cpu() for k, v in t.items()} for t in y]
+            images = [(t * 255).to(torch.uint8).cpu() for t in images]
+            return images, y_pred, targets, -1
         else:
-            y_hat = self(x)
-            loss = self.loss(y_hat, y.long())
-            self.valid_metrics.update(y_hat.cpu(), y.cpu().long())
-        
-            if(self.task == 'segmentation'):
-                self.validation_step_outputs.append({"loss": loss.item(), "image": x, "predictions": y_hat, "targets": y})
-            else:
-                self.validation_step_outputs.append({"loss": loss.item()})
+            y = y.long()
+            loss = self.loss(y_hat, y)
+            images = (images * 255).to(torch.uint8)
+            
+            return images.cpu(), y_hat.cpu(), y.cpu(), loss.item()
 
-            self.log('metrics/batch/val_loss', loss)
+    def validation_step(self, batch, batch_idx):
+    
+        images, y_pred, targets, loss = self._shared_eval_step(batch, batch_idx)
+        self.valid_metrics.update(y_pred, targets)
+        self.validation_step_outputs.append({"image": images, "predictions": y_pred, "targets": targets, "loss": loss})
+        self.log('metrics/batch/val_loss', loss)
 
     def on_validation_epoch_end(self):
+        loss =[outputs['loss'] for outputs in self.validation_step_outputs]
+        self.log('metrics/epoch/val_loss', sum(loss) / len(loss))
         
+        outputs = self.validation_step_outputs[0]
+        images, predictions, targets = outputs["image"], outputs["predictions"], outputs["targets"]
         if(self.task == 'classification'):
-            self.log('metrics/epoch/val_acc', self.valid_metrics.compute())
-            loss =[outputs['loss'] for outputs in self.validation_step_outputs]
-            self.log('metrics/epoch/val_loss', sum(loss) / len(loss))
-           
+            self.log(f"metrics/epoch/val_{self.metrics_name}", self.valid_metrics.compute())
+            reconstructions = images
         elif(self.task == 'segmentation'):
-            self.log("metrics/epoch/val_dice", self.valid_metrics.compute())
-            loss =[output['loss'] for output in self.validation_step_outputs]
-            self.log('metrics/epoch/val_loss', sum(loss) / len(loss))
-
-            outputs = self.validation_step_outputs[0]
-            images, predictions, targets = outputs["image"].cpu(), outputs["predictions"].cpu(), outputs["targets"].cpu()
+            self.log(f"metrics/epoch/val_{self.metrics_name}", self.valid_metrics.compute())
             classes_masks = predictions.argmax(1) == torch.arange(predictions.shape[1])[:, None, None, None]
-            reconstructions = [draw_segmentation_masks((image * 255.).to(torch.uint8), masks=mask, alpha=.8)
+            reconstructions = [draw_segmentation_masks(image, masks=mask, alpha=.8)
                                for image, mask in zip(images, classes_masks.swapaxes(0, 1))]
-            reconstructions = make_grid(torch.stack(reconstructions), nrow= int(self.train_settings['n_batch'] ** 0.5))
-            reconstructions = reconstructions.numpy().transpose(1, 2, 0) / 255
-            self.logger.experiment["val/reconstructions"].append(File.as_image(reconstructions))
-
-            self.validation_step_outputs.clear()
-        
+            reconstructions = torch.stack([F.interpolate(img.unsqueeze(0), size=(128, 128))
+                                            for img in reconstructions]).squeeze(1)
         elif(self.task == 'detection'):
-            self.log('metrics/epoch/val_mAP', self.valid_metrics.compute()['map'])
-            #no validation loss
-
-            outputs = self.validation_step_outputs[-1]
-            image, predictions, targets = outputs["image"].cpu(), outputs["predictions"], outputs["targets"]
+            self.log(f"metrics/epoch/val_{self.metrics_name}", self.valid_metrics.compute()['map'])
             if("maskrcnn" in self.architect_settings['backbone']['name']):
-                boolean_masks = predictions['masks'][predictions['scores'] > .75] > 0.5
-                reconstructions = draw_segmentation_masks((image * 255.).to(torch.uint8), 
-                                                    boolean_masks.cpu().squeeze(1), alpha=0.9)
+                boolean_masks = [out['masks'][out['scores']  > .75] > 0.5 for out in predictions]
+                reconstructions = [draw_segmentation_masks(image, mask.squeeze(1), alpha=0.9) 
+                                   for image, mask in zip(images, boolean_masks)]
             else:
-                reconstructions = draw_bounding_boxes((image * 255.).to(torch.uint8), 
-                                                    boxes=predictions["boxes"][:5].cpu(),
-                                                    colors="red",
-                                                    width=5)
-                reconstructions = draw_bounding_boxes(reconstructions, 
-                                                    boxes=targets["boxes"][:5].cpu(),
-                                                    colors="blue",
-                                                    width=5)
-            reconstructions = reconstructions.numpy().transpose(1, 2, 0) / 255.
-            self.logger.experiment["val/reconstructions"].append(File.as_image(reconstructions))
+                boxes = [out['boxes'][out['scores'] > .8] for out in predictions]
+                reconstructions = [draw_bounding_boxes(image, box, width=4, colors='red')
+                                      for image, box in zip(images, boxes)]
+            reconstructions = torch.stack([F.interpolate(img.unsqueeze(0), size=(128, 128))
+                                            for img in reconstructions]).squeeze(1)
+          
+        reconstructions = make_grid(reconstructions, nrow= int(self.train_settings['n_batch'] ** 0.5))
+        reconstructions = reconstructions.numpy().transpose(1, 2, 0) / 255
+        self.logger.experiment["val/reconstructions"].append(File.as_image(reconstructions))
 
-            self.validation_step_outputs.clear()
-
+        self.validation_step_outputs.clear()
         self.valid_metrics.reset()
+
+
+    def test_step(self, batch, batch_idx):
+        return self._shared_eval_step(batch, batch_idx)
        
     def configure_optimizers(self):
         optimizer = get_optimizer(self.model.parameters(), self.train_settings)

@@ -43,11 +43,11 @@ class LungCTscan(Dataset):
             self.mask_list = mask_list[int(n*0.8):]
 
         self.transform = transform
+        self.transformAnn = transforms.Compose([transforms.Resize((imgsize, imgsize)),
+                                                    transforms.ToTensor()])
         if(self.transform is None):
             self.transformImg = partial(SemanticSegmentation, resize_size=imgsize)()
-            self.transformAnn = transforms.Compose([transforms.Resize((imgsize, imgsize)),
-                                                    transforms.ToTensor()])
-        
+            
     def __len__(self):
         return len(self.img_list)
         
@@ -63,13 +63,13 @@ class LungCTscan(Dataset):
         mask = Image.open(mask_path).convert('L')
 
         if self.transform is None:
-            image = self.transformImg(image)
+            tran_image = self.transformImg(image)
             mask = self.transformAnn(mask)
         else:
-            image = self.transform(image)
+            tran_image = self.transform(image)
             mask = self.transform(mask)
 
-        return image, mask.squeeze(0)
+        return tran_image, mask.squeeze(0), self.transformAnn(image)
 
 class PennFudanDataset(torch.utils.data.Dataset):
     def __init__(self, mode, data_path, imgsize=224, transform=None):
@@ -144,9 +144,9 @@ class PennFudanDataset(torch.utils.data.Dataset):
         target["area"] = area
         target["iscrowd"] = iscrowd
 
-        img = self.transform(img)
+        trans_img = self.transform(img)
 
-        return img, target
+        return trans_img, target, transforms.ToTensor()(img)
         
 class CIFAR10read(Dataset):
     """Customized dataset loader"""
@@ -183,8 +183,8 @@ class CIFAR10read(Dataset):
         images = self.input_images[idx]
         labels = self.input_labels[idx]
       
-        images = self.transform(images)
-        return images, labels
+        trans_img = self.transform(images)
+        return trans_img, labels, transforms.ToTensor()(images)
 
 def rgb_to_2D_label(label):
  

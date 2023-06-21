@@ -91,6 +91,7 @@ The configurations, a [config.yaml](Modules/config.yaml), encompassing the model
 
 | Parameters  | Description |Scope | Value |
 | ------------- | ------------- | ------------- | ------------- |
+| task | task of experiment |  | str: "classification", "detection", "segmentation" |
 | `Model` |
 | name | Model's name  | architect_settings  | string |
 | name | Pretrained model  | architect_settings/backbone  | string: "name"-"s/m/l" |
@@ -106,13 +107,14 @@ The configurations, a [config.yaml](Modules/config.yaml), encompassing the model
 | gpu_ids | list of gpus used  | training_settings  | list: [0] |
 | n_gpu | num gpus  | training_settings  | int |
 | img_size | size of image to model  | training_settings  | int |
-| loss | loss function  | training_settings  | str: "ce" (classification/segmentation), "spread", "dice", "mse", "none"(detection) |
+| loss | loss function  | training_settings  | str: "ce" (classification/segmentation), "dice", "mse", "none"(detection) |
 | ckpt_path | path to check-points  | training_settings  | str |
 | n_epoch | num epoch  | training_settings  | int |
 | n_batch | batch size  | training_settings  | int |
 | num_workers | num workers to dataloader | training_settings  | int |
 | optimizer | optimizer | training_settings  | str: "adam", "sgd" |
 | lr_scheduler | learning rate scheduler | training_settings  | str: "step", "multistep", "reduce_on_plateau" |
+| early_stopping | early stopping | training_settings  | bool |
 | lr | learning rate | training_settings  | float|
 | lr_step | learning rate step for decay| training_settings  | int|
 | lr_decay | learning rate decay rate | training_settings  | float|
