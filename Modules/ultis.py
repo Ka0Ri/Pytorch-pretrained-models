@@ -171,6 +171,9 @@ class CIFAR10read(Dataset):
         elif(mode == 'val'):
             self.input_images = np.array(data[int(n * 0.8):])
             self.input_labels = np.array(labels[int(n * 0.8):])
+        elif(mode == 'test'):
+            self.input_images = np.array(data)
+            self.input_labels = np.array(labels)
     
         self.transform = transform
         if(self.transform == None):
