@@ -48,8 +48,8 @@ It facilitates three distinct modes of operation: (1) inference utilizing the co
 | Name  | Description |Metrics | Params |
 | ------------- | ------------- | ------------- | ------------- |
 | `Classification` | Model| Accuracy | milions |
-| resnet | [ResNet](https://arxiv.org/abs/1512.03385)  | 93.33  | s: 11.5, m: 28.0, l: 62.6 |
-| efficientnet | [Efficient Net v2](https://arxiv.org/abs/2104.00298)  | 95.46  | s: 21.9, m: 54.6, l: 118|
+| resnet | [ResNet](https://arxiv.org/abs/1512.03385)  |-  | s: 11.5, m: 28.0, l: 62.6 |
+| efficientnet | [Efficient Net v2](https://arxiv.org/abs/2104.00298)  | -  | s: 21.9, m: 54.6, l: 118|
 | vgg | [Very Deep CNN](https://arxiv.org/abs/1409.1556)  | -  | s: 9.5, m: 9.7, l: 20.3 |
 | densenet | [DenseNet](https://arxiv.org/abs/1608.06993)  |  - | s: 8.1, m: 31.7, l: 22.0|
 | wide_resnet | [Wide ResNet](https://arxiv.org/abs/1605.07146)  | -  | s: 71.3, m: 129|
@@ -59,14 +59,14 @@ It facilitates three distinct modes of operation: (1) inference utilizing the co
 | convnext | [ConvNext](https://arxiv.org/abs/2201.03545)  | -  | s: 28.5, m: 88.7, l: 198 |
 | resnext | [ResNext](https://arxiv.org/abs/1611.05431v2)  |  - | s: 27.5, m: 91.2, l: 85.9 |
 | vit | [Vision Transformer](https://arxiv.org/abs/2010.11929)  |  - | s: 86.4, m: 304, l: |
-| swin | [Swin Transformer](https://arxiv.org/abs/2103.14030)  |  93.17 | s: 28.2, m: 49.5, l: 87.9|
+| swin | [Swin Transformer](https://arxiv.org/abs/2103.14030)  |  - | s: 28.2, m: 49.5, l: 87.9|
 | `Detection` | Model| mAP | milions |
 | retinanet | [Retina Net](https://arxiv.org/abs/1708.02002)  |  - | m: 32.2, l: 36.4 |
-| ssd | [Single Shot Detection](https://arxiv.org/abs/1512.02325)  |  66.43 | s: 3.8, m: 25.4 |
-| fasterrcnn |[Faster Region Proposlal CNN](https://arxiv.org/abs/1506.01497)  | 81.16  | s: 20.0, m: 42.4 |
+| ssd | [Single Shot Detection](https://arxiv.org/abs/1512.02325)  |  - | s: 3.8, m: 25.4 |
+| fasterrcnn |[Faster Region Proposlal CNN](https://arxiv.org/abs/1506.01497)  | -  | s: 20.0, m: 42.4 |
 | `Segmentation` | Model| dice | milions |
-| fcn | [Fully CNN](https://arxiv.org/abs/1411.4038)  |  79.81 | m: 28.0, l: 47.0 |
-| deeplab | [Atrous Convolution](https://arxiv.org/abs/1706.05587) | 81.08  | m: 23.5, l: 87.9 |
+| fcn | [Fully CNN](https://arxiv.org/abs/1411.4038)  |  - | m: 28.0, l: 47.0 |
+| deeplab | [Atrous Convolution](https://arxiv.org/abs/1706.05587) | -  | m: 23.5, l: 87.9 |
 | maskrcnn | [Masked RCNN](https://arxiv.org/abs/1703.06870) | - | s: 39.5 |
 #
 ## Training Interface
