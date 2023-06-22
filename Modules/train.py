@@ -266,7 +266,13 @@ class Model(LightningModule):
         if stage == "fit":
             # Loss selection
             self.loss = get_loss_function(self.train_settings['loss'])
+            self.train_step_outputs = []
             self.validation_step_outputs = []
+        elif stage == "test":
+            self.loss = get_loss_function(self.train_settings['loss'])
+            self.test_step_outputs = []
+        elif stage == "predict":
+            self.pred_step_outputs = []
     
     def forward(self, x, y=None):
         return self.model(x, y)
@@ -354,8 +360,24 @@ class Model(LightningModule):
 
 
     def test_step(self, batch, batch_idx):
-        return self._shared_eval_step(batch, batch_idx)
-       
+
+        images, y_pred, targets, loss = self._shared_eval_step(batch, batch_idx)
+        self.valid_metrics.update(y_pred, targets) # can reuse valid metrics 
+        self.test_step_outputs.append({"image": images, "predictions": y_pred, "targets": targets, "loss": loss})
+    
+    def on_test_epoch_end(self):
+        loss =[outputs['loss'] for outputs in self.test_step_outputs]
+        self.log('metrics/epoch/test_loss', sum(loss) / len(loss))
+        
+        if(self.task == 'classification' or self.task == 'segmentation'):
+            self.log(f"metrics/epoch/test_{self.metrics_name}", self.valid_metrics.compute())    
+        elif(self.task == 'detection'):
+            self.log(f"metrics/epoch/test_{self.metrics_name}", self.valid_metrics.compute()['map'])
+         
+        self.test_step_outputs.clear()
+        self.valid_metrics.reset()
+        
+        
     def configure_optimizers(self):
         optimizer = get_optimizer(self.model.parameters(), self.train_settings)
         lr_scheduler_config = get_lr_scheduler_config(optimizer, self.train_settings)

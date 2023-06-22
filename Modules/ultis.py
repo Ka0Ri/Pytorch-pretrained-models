@@ -41,6 +41,9 @@ class LungCTscan(Dataset):
         elif(mode == 'val'):
             self.img_list = img_list[int(n*0.8):]
             self.mask_list = mask_list[int(n*0.8):]
+        elif(mode == 'test'):
+            self.img_list = img_list[int(n*0.8):]
+            self.mask_list = mask_list[int(n*0.8):]
 
         self.transform = transform
         self.transformAnn = transforms.Compose([transforms.Resize((imgsize, imgsize)),
@@ -85,6 +88,9 @@ class PennFudanDataset(torch.utils.data.Dataset):
             self.imgs = imgs[:int(n*0.8)]
             self.masks = masks[:int(n*0.8)]
         elif(mode == 'val'):
+            self.imgs = imgs[int(n*0.8):]
+            self.masks = masks[int(n*0.8):]
+        elif(mode == 'test'):
             self.imgs = imgs[int(n*0.8):]
             self.masks = masks[int(n*0.8):]
 
