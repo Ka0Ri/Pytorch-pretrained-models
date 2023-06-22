@@ -164,3 +164,6 @@ cython_debug/
 data/
 models/
 # examples/
+
+code
+test.ipynb
