@@ -1,6 +1,13 @@
-# Pytorch-pretrained-models
-We wrap various pretrained models in pytorch with lightning and neptune logger (developed by AISeed ) 
+# Pytorch-pretrained-models (AISeed)
+The project aims to provide a framework for efficiently utilizing pre-trained models in PyTorch using the PyTorch Lightning library. Additionally, it incorporates the Neptune logger. This project serves two primary purposes: to facilitate rapid testing of new datasets and to act as a framework for downstream tasks by leveraging pre-trained models.
 
+# Features
+- Integration of pre-trained models into PyTorch Lightning
+- Support for seamless experimentation with new datasets
+- Logging and monitoring capabilities through Neptune logger
+- Simplified framework for downstream tasks with pre-trained models
+
+# Installation
 ## prequisite
 - Python=3.9
 - CUDA: 11.2/11.3
@@ -14,10 +21,15 @@ We wrap various pretrained models in pytorch with lightning and neptune logger (
 conda create --name=ENV_NAME python=3.9
 conda activate ENV_NAME
 ```
+- Clone the repository:
+```
+git clone https://github.com/Ka0Ri/Pytorch-pretrained-models.git
+```
 - Install dependencies: 
 ```
 conda env create -f environment.yml
 ```
+
 #
 
 It facilitates three distinct modes of operation: (1) inference utilizing the complete model, (2) fine-tuning with a particular class within the standard layers. Table 1 presents comprehensive information regarding the supported models, while the subsequent section outlines the configurations to be provided.
@@ -65,8 +77,52 @@ Examples of training Wrapping Network can be found in [ults.py](Modules/ultis.py
 
 ![alt text](image/neptune.jpg)
 
+1. Import the necessary modules:
+```python
+import yaml
+from pytorch_lightning.loggers import NeptuneLogger
+from Modules.train import DataModule, Model, get_trainer
 ```
-Modify in Examples Notebook
+2. Load Config file and Neptune logging repository:
+
+```Python
+with open("Modules/config.yaml", 'r') as stream:
+    PARAMS = yaml.safe_load(stream)
+    PARAMS = PARAMS['Config_Key']
+    print(PARAMS)
+
+neptune_logger = NeptuneLogger(
+        api_key="YOUR_API_KEY",
+        project ="YOUR_PROJECT_NAME",
+        log_model_checkpoints=False,
+    )
+
+neptune_logger.log_hyperparams(params=PARAMS)
+```
+3. Load Data
+```Python
+# add key and new data class as followed, in Train.py DataModule class
+self.data_class = {
+   "CIFAR10": CIFAR10read,
+   "LungCT-Scan": LungCTscan,
+   "Dubai": DubaiAerialread,
+   "PennFudan": PennFudanDataset,
+
+   # New dataset
+   "New Dataset": NeWDatasetClass
+}
+```
+```Python
+data = DataModule(PARAMS['dataset_settings'], PARAMS['training_settings'], [None, None])
+```
+4. Fine tune and evaluate moodel (new model can be customized)
+```Python
+model = Model(PARAMS=PARAMS)
+trainer = get_trainer(PARAMS['training_settings'], neptune_logger)
+# train
+trainer.fit(model, data)
+# test
+trainer.test(model, data)
 ```
 #
 
@@ -75,9 +131,6 @@ We deploy (demo) our model using [Gradio](https://gradio.app/), which supports t
 
 ![alt text](image/gradio.png)
 
-```
-Modify in Example Notebook
-```
 
 #
 ## Configuration (Config file)
@@ -123,5 +176,21 @@ The configurations, a [config.yaml](Modules/config.yaml), encompassing the model
 </tr>
 The understanding of the functioning of the configuration file is best obtained by referring to the actual "config.yaml" file. It is crucial to acknowledge that the module's flexibility is maintained by avoiding excessive hard coding of parameters. This is because fine-tuning and optimizing the parameters play a vital role in the development process. As part of our ongoing efforts to enhance the performance of the module, we anticipate making further refinements to the configurations. Consequently, it is likely that the config file will be subject to future updates to reflect these optimizations.
 
-#
-# References
+# Contributing
+Contributions are welcome! If you find any issues or have suggestions for improvements, please open an issue or submit a pull request.
+
+When contributing to this project, please adhere to the following guidelines:
+
+- Fork the repository and create a branch for your feature or bug fix.
+- Ensure that your code is well-documented and follows the project's coding conventions.
+- Write clear commit messages and provide a detailed description of your changes.
+- Ensure that your code passes all existing tests and write new tests when applicable.
+# License
+This project is licensed under the MIT License.
+
+# Acknowledgments
+- AISeed Inc for supporting developers.
+- The Pytroch/ PyTorch Lightning community for providing a powerful and flexible deep learning framework.
+- The Neptune Ai community for providing a professional logger.
+# Contact
+For any questions or inquiries, please contact dtvu1707@gmail.com
