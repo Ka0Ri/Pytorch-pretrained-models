@@ -15,18 +15,18 @@ The project aims to provide a framework for efficiently utilizing pre-trained mo
 - Others: numpy, opencv, scipy
 - dashboard: neptune ai (for training), gradio (for testing)
 ## Environments Settings
-- Install [Anaconda](https://www.anaconda.com/)
-- create a new environment:
+1. Install [Anaconda](https://www.anaconda.com/)
+<!-- - create a new environment:
 ```
 conda create --name=ENV_NAME python=3.9
 conda activate ENV_NAME
-```
-- Clone the repository:
-```
+``` -->
+2. Clone the repository:
+```bash
 git clone https://github.com/Ka0Ri/Pytorch-pretrained-models.git
 ```
-- Install dependencies: 
-```
+3. Install dependencies: 
+```bash
 conda env create -f environment.yml
 ```
 
@@ -47,7 +47,7 @@ It facilitates three distinct modes of operation: (1) inference utilizing the co
 
 | Name  | Description |Metrics | Params |
 | ------------- | ------------- | ------------- | ------------- |
-| `Classification` | None| Accuracy | milions |
+| `Classification` | Model| Accuracy | milions |
 | resnet | [ResNet](https://arxiv.org/abs/1512.03385)  | 93.33  | s: 11.5, m: 28.0, l: 62.6 |
 | efficientnet | [Efficient Net v2](https://arxiv.org/abs/2104.00298)  | 95.46  | s: 21.9, m: 54.6, l: 118|
 | vgg | [Very Deep CNN](https://arxiv.org/abs/1409.1556)  | -  | s: 9.5, m: 9.7, l: 20.3 |
@@ -60,14 +60,14 @@ It facilitates three distinct modes of operation: (1) inference utilizing the co
 | resnext | [ResNext](https://arxiv.org/abs/1611.05431v2)  |  - | s: 27.5, m: 91.2, l: 85.9 |
 | vit | [Vision Transformer](https://arxiv.org/abs/2010.11929)  |  - | s: 86.4, m: 304, l: |
 | swin | [Swin Transformer](https://arxiv.org/abs/2103.14030)  |  93.17 | s: 28.2, m: 49.5, l: 87.9|
-| `Detection` | None| mAP | milions |
+| `Detection` | Model| mAP | milions |
 | retinanet | [Retina Net](https://arxiv.org/abs/1708.02002)  |  - | m: 32.2, l: 36.4 |
 | ssd | [Single Shot Detection](https://arxiv.org/abs/1512.02325)  |  66.43 | s: 3.8, m: 25.4 |
 | fasterrcnn |[Faster Region Proposlal CNN](https://arxiv.org/abs/1506.01497)  | 81.16  | s: 20.0, m: 42.4 |
-| `Segmentation` | None| dice | milions |
+| `Segmentation` | Model| dice | milions |
 | fcn | [Fully CNN](https://arxiv.org/abs/1411.4038)  |  79.81 | m: 28.0, l: 47.0 |
 | deeplab | [Atrous Convolution](https://arxiv.org/abs/1706.05587) | 81.08  | m: 23.5, l: 87.9 |
-| maskrcnn | [Masked RCNN](https://arxiv.org/abs/1703.06870) |  | m: 39.5, l:  |
+| maskrcnn | [Masked RCNN](https://arxiv.org/abs/1703.06870) | - | s: 39.5 |
 #
 ## Training Interface
 Examples of training Wrapping Network can be found in [ults.py](Modules/ultis.py) and Notebook [examples](examples.ipynb), we config hyper-parameters in [config.yaml](Modules/config.yaml) file
