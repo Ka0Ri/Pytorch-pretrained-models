@@ -64,7 +64,13 @@ sudo systemctl start docker
 ```
 ```
 4. Inference without GPU
-```
+```bash
+docker run --rm -it --init \
+  --gpus=all \
+  --ipc=host \
+  --volume="$PWD:/app" \
+  -p 7860:7860 \
+  pytorch-finetune:runtime python Modules/app.py
 ```
 #
 

@@ -100,4 +100,4 @@ with gr.Blocks() as demo:
       
 
 if __name__ == "__main__":
-    demo.launch(share=False)
+    demo.launch(server_name="0.0.0.0")
