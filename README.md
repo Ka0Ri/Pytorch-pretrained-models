@@ -29,7 +29,20 @@ git clone https://github.com/Ka0Ri/Pytorch-pretrained-models.git
 ```bash
 conda env create -f environment.yml
 ```
-
+## Docker (Linux only)
+1. Install Docker
+```
+https://docs.docker.com/engine/install/ubuntu/
+```
+2. Pull the Image
+```
+```
+3. Run training
+```
+```
+4. Inference without GPU
+```
+```
 #
 
 It facilitates three distinct modes of operation: (1) inference utilizing the complete model, (2) fine-tuning with a particular class within the standard layers. Table 1 presents comprehensive information regarding the supported models, while the subsequent section outlines the configurations to be provided.
@@ -37,7 +50,7 @@ It facilitates three distinct modes of operation: (1) inference utilizing the co
 - `Detector.py`: [WrappingDetector](Modules/Detector.py#L30) Wrapping Head for object detection task.
 - `Segment.py`: [WrappingSegment](Modules/Segment.py#L22) Wrapping Head for semantic segmentation task.
 
-![alt text](image/test.png)
+![alt text](readme-img/test.png)
 
 <table>
 <tr>
@@ -75,7 +88,7 @@ Examples of training Wrapping Network can be found in [ults.py](Modules/ultis.py
 - `ultis.py`: Three pre-defined datasets have been established, each serving as a demonstration for the training-testing process of a specific task, [CIFAR10](Modules/ultis.py#) for classification, [Lung CT-scan](Modules/ultis.py) for object detection, and [PennFudan](Modules/ultis.py) for binary object segmentation.
 - Notebook `examples`: Our main module is [ModulesModel](examples.ipynb) that based on [pytorch-lightning](https://lightning.ai/pages/open-source/) and logged by [neptune-ai](https://neptune.ai/). As shown in the Figure above, we logged hyperparameters, metrics, and results from each run.
 
-![alt text](image/neptune.jpg)
+![alt text](readme-img/neptune.jpg)
 
 1. Import the necessary modules:
 ```python
@@ -129,7 +142,7 @@ trainer.test(model, data)
 ## Testing Interface
 We deploy (demo) our model using [Gradio](https://gradio.app/), which supports to visualize results from 3 tasks: classification, detection, and segmentation, depending on the selected model.
 
-![alt text](image/gradio.png)
+![alt text](readme-img/gradio.png)
 
 
 #

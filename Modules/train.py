@@ -5,10 +5,10 @@ from torch.utils.data import DataLoader
 from torchvision.utils import make_grid, draw_bounding_boxes, draw_segmentation_masks
 import torch.nn.functional as F
 
-from Modules.Classifier import WrappingClassifier
-from Modules.Segment import WrappingSegment
-from Modules.Detector import WrappingDetector
-from Modules.ultis import *
+from Classifier import WrappingClassifier
+from Segment import WrappingSegment
+from Detector import WrappingDetector
+from ultis import *
 
 from pytorch_lightning import LightningModule, Trainer, LightningDataModule
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint, EarlyStopping
@@ -376,10 +376,44 @@ class Model(LightningModule):
          
         self.test_step_outputs.clear()
         self.valid_metrics.reset()
-        
-        
+            
     def configure_optimizers(self):
         optimizer = get_optimizer(self.model.parameters(), self.train_settings)
         lr_scheduler_config = get_lr_scheduler_config(optimizer, self.train_settings)
 
         return {"optimizer": optimizer, "lr_scheduler": lr_scheduler_config}
+    
+if __name__ == "__main__":
+    
+    import yaml
+    from pytorch_lightning.loggers import NeptuneLogger
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--config-file', '-c', type=str, required=True, help='Config file'
+    )
+    args = parser.parse_args()
+
+    with open(args.config_file, 'r') as stream:
+        PARAMS = yaml.safe_load(stream)
+        print(PARAMS)
+
+    neptune_logger = NeptuneLogger(
+            project=PARAMS['logger']['project'],
+            # with_id="AIS-113",
+            tags=PARAMS['logger']['tags'],
+            log_model_checkpoints=False
+        )
+    neptune_logger.log_hyperparams(params=PARAMS)
+    
+    #load data
+    data = DataModule(PARAMS['dataset_settings'], PARAMS['training_settings'])
+
+    # create model
+    model = Model(PARAMS=PARAMS)
+    trainer = get_trainer(PARAMS['training_settings'], neptune_logger)
+    # train
+    trainer.fit(model, data)
+    # test
+    trainer.test(model, data)
