@@ -402,6 +402,7 @@ if __name__ == "__main__":
     neptune_logger = NeptuneLogger(
             project=PARAMS['logger']['project'],
             # with_id="AIS-113",
+            api_key=PARAMS['logger']['api_key'],
             tags=PARAMS['logger']['tags'],
             log_model_checkpoints=False
         )

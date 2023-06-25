@@ -1,6 +1,6 @@
 logger:
         project: "kaori/AISeed" # replace with your own
-        api: YOUR API KEY # replace with your own
+        api_key: YOUR API KEY # replace with your own
         tags: None
 task: classification
 architect_settings:
