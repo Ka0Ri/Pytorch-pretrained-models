@@ -62,22 +62,11 @@ sudo systemctl start docker
 2. Pull the Image
 ```
 ```
-3. Run training
+3. Check docker environment
 ```bash
 docker run --rm -it --init \
   --gpus=all \
-  --ipc=host \
-  --volume="$PWD:/app" \
-  pytorch-finetune:runtime python Modules/train.py
-```
-4. Inference without GPU
-```bash
-docker run --rm -it --init \
-  --gpus=all \
-  --ipc=host \
-  --volume="$PWD:/app" \
-  -p 7860:7860 \
-  pytorch-finetune:runtime python Modules/app.py
+  pytorch-finetune:runtime nvidia-smi
 ```
 #
 
@@ -119,10 +108,10 @@ It facilitates three distinct modes of operation: (1) inference utilizing the co
 | maskrcnn | [Masked RCNN](https://arxiv.org/abs/1703.06870) | - | s: 39.5 |
 #
 ## Training Interface
-Examples of training Wrapping Network can be found in [ults.py](Modules/ultis.py) and Notebook [examples](examples.ipynb), we config hyper-parameters in [config.yaml](Modules/config.yaml) file
+Examples of training Wrapping Network can be found in [ultis.py](Modules/ultis.py) and train file [train.py](train.py), we config hyper-parameters in [config.yml](Modules/new-config.yml) file
 
-- `ultis.py`: Three pre-defined datasets have been established, each serving as a demonstration for the training-testing process of a specific task, [CIFAR10](Modules/ultis.py#) for classification, [Lung CT-scan](Modules/ultis.py) for object detection, and [PennFudan](Modules/ultis.py) for binary object segmentation.
-- Notebook `examples`: Our main module is [ModulesModel](examples.ipynb) that based on [pytorch-lightning](https://lightning.ai/pages/open-source/) and logged by [neptune-ai](https://neptune.ai/). As shown in the Figure above, we logged hyperparameters, metrics, and results from each run.
+- `ultis.py`: Three pre-defined datasets have been established, each serving as a demonstration for the training-testing process of a specific task, [CIFAR10](Modules/ultis.py) for classification, [Lung CT-scan](Modules/ultis.py) for object detection, and [PennFudan](Modules/ultis.py) for binary object segmentation.
+- Trainning `train.py`: Our main module is [Model](Modules/train.py) that based on [pytorch-lightning](https://lightning.ai/pages/open-source/) and logged by [neptune-ai](https://neptune.ai/). As shown in the Figure above, we logged hyperparameters, metrics, and results from each run.
 
 ![alt text](readme-img/neptune.jpg)
 
@@ -132,7 +121,7 @@ import yaml
 from pytorch_lightning.loggers import NeptuneLogger
 from Modules.train import DataModule, Model, get_trainer
 ```
-2. Load Config file and Neptune logging repository:
+1. Load Config file and Neptune logging repository:
 
 ```Python
 with open("Modules/config.yaml", 'r') as stream:
@@ -164,7 +153,7 @@ self.data_class = {
 ```Python
 data = DataModule(PARAMS['dataset_settings'], PARAMS['training_settings'], [None, None])
 ```
-4. Fine tune and evaluate moodel (new model can be customized)
+4. Fine tune and evaluate moodel
 ```Python
 model = Model(PARAMS=PARAMS)
 trainer = get_trainer(PARAMS['training_settings'], neptune_logger)
@@ -173,14 +162,39 @@ trainer.fit(model, data)
 # test
 trainer.test(model, data)
 ```
+5. Run training in environment
+```bash
+python Modules/train.py -c CONFIG_FILE
+```
+6. Run training by Docker
+```bash
+docker run --rm -it --init \
+  --gpus=all \
+  --ipc=host \
+  --volume="$PWD:/app" \
+  pytorch-finetune:runtime python Modules/train.py
+```
 #
 
 ## Testing Interface
 We deploy (demo) our model using [Gradio](https://gradio.app/), which supports to visualize results from 3 tasks: classification, detection, and segmentation, depending on the selected model.
 
 ![alt text](readme-img/gradio.png)
-
-
+1. Create a folder named `models` and save all checkpoints inside it. 
+2. Run app
+- by environment: 
+```bash
+python Modules/app.py
+```
+- by Docker:
+```bash
+docker run --rm -it --init \
+  --gpus=all \
+  --ipc=host \
+  --volume="$PWD:/app" \
+  -p 7860:7860 \
+  pytorch-finetune:runtime python Modules/app.py
+```
 #
 ## Configuration (Config file)
 The configurations, a [config.yaml](Modules/config.yaml), encompassing the model architecture and training settings, as well as dataset settings. The "config.yaml" file follows a structured format, consisting of a list of dictionaries. Each dictionary within the list represents a distinct configuration and saves specific configuration parameters.
