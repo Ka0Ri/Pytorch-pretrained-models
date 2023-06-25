@@ -75,7 +75,7 @@ It facilitates three distinct modes of operation: (1) inference utilizing the co
 - `Detector.py`: [WrappingDetector](Modules/Detector.py#L30) Wrapping Head for object detection task.
 - `Segment.py`: [WrappingSegment](Modules/Segment.py#L22) Wrapping Head for semantic segmentation task.
 
-![alt text](readme-img/test.png)
+![alt text](assets/test.png)
 
 <table>
 <tr>
@@ -113,7 +113,7 @@ Examples of training Wrapping Network can be found in [ultis.py](Modules/ultis.p
 - `ultis.py`: Three pre-defined datasets have been established, each serving as a demonstration for the training-testing process of a specific task, [CIFAR10](Modules/ultis.py) for classification, [Lung CT-scan](Modules/ultis.py) for object detection, and [PennFudan](Modules/ultis.py) for binary object segmentation.
 - Trainning `train.py`: Our main module is [Model](Modules/train.py) that based on [pytorch-lightning](https://lightning.ai/pages/open-source/) and logged by [neptune-ai](https://neptune.ai/). As shown in the Figure above, we logged hyperparameters, metrics, and results from each run.
 
-![alt text](readme-img/neptune.jpg)
+![alt text](assets/neptune.jpg)
 
 1. Import the necessary modules:
 ```python
@@ -178,7 +178,7 @@ docker run --rm -it --init \
 ## Testing Interface
 We deploy (demo) our model using [Gradio](https://gradio.app/), which supports to visualize results from 3 tasks: classification, detection, and segmentation, depending on the selected model.
 
-![alt text](readme-img/gradio.png)
+![alt text](assets/gradio.png)
 1. Create a folder named `models` and save all checkpoints inside it. 
 2. Run app
 - by environment: 
@@ -207,9 +207,9 @@ The configurations, a [config.yaml](Modules/config.yaml), encompassing the model
 | Parameters  | Description |Scope | Value |
 | ------------- | ------------- | ------------- | ------------- |
 | `logger` | neptune account |  |  |
-| project | your project |  |str  |
-| api_key | your account token |  |str  |
-| tags | Runtime Tags |  |[str]  |
+| project | your project | logger |str  |
+| api_key | your account token | logger |str  |
+| tags | Runtime Tags | logger |[str]  |
 | task | task of experiment |  | str: "classification", "detection", "segmentation" |
 | `Model` |
 | name | Model's name  | architect_settings  | string |
