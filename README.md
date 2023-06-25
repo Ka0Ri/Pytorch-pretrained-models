@@ -16,18 +16,20 @@ The project aims to provide a framework for efficiently utilizing pre-trained mo
 - dashboard: neptune ai (for training), gradio (for testing)
 ## Environments Settings
 1. Install [Anaconda](https://www.anaconda.com/)
-<!-- - create a new environment:
+- create a new environment:
 ```
 conda create --name=ENV_NAME python=3.9
 conda activate ENV_NAME
-``` -->
+```
 2. Clone the repository:
 ```bash
 git clone https://github.com/Ka0Ri/Pytorch-pretrained-models.git
 ```
 3. Install dependencies: 
 ```bash
-conda env create -f environment.yml
+conda install pytorch==1.12.1 torchvision==0.13.1 cudatoolkit=11.3 -c pytorch
+
+pip install -r requirements.txt
 ```
 ## Docker (Linux only)
 1. [Install Docker](https://docs.docker.com/engine/install/ubuntu/)
