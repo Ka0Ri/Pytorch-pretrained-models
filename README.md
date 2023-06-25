@@ -124,10 +124,9 @@ from Modules.train import DataModule, Model, get_trainer
 1. Load Config file and Neptune logging repository:
 
 ```Python
-with open("Modules/config.yaml", 'r') as stream:
-    PARAMS = yaml.safe_load(stream)
-    PARAMS = PARAMS['Config_Key']
-    print(PARAMS)
+with open(args.config_file, 'r') as stream:
+        PARAMS = yaml.safe_load(stream)
+        print(PARAMS)
 
 neptune_logger = NeptuneLogger(
         api_key="YOUR_API_KEY",
@@ -207,6 +206,10 @@ The configurations, a [config.yaml](Modules/config.yaml), encompassing the model
 
 | Parameters  | Description |Scope | Value |
 | ------------- | ------------- | ------------- | ------------- |
+| `logger` | neptune account |  |  |
+| project | your project |  |str  |
+| api_key | your account token |  |str  |
+| tags | Runtime Tags |  |[str]  |
 | task | task of experiment |  | str: "classification", "detection", "segmentation" |
 | `Model` |
 | name | Model's name  | architect_settings  | string |
