@@ -61,7 +61,12 @@ sudo systemctl start docker
 ```
 ```
 3. Run training
-```
+```bash
+docker run --rm -it --init \
+  --gpus=all \
+  --ipc=host \
+  --volume="$PWD:/app" \
+  pytorch-finetune:runtime python Modules/train.py
 ```
 4. Inference without GPU
 ```bash
