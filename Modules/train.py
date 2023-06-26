@@ -26,7 +26,7 @@ torch.cuda.manual_seed(seed)
 torch.cuda.manual_seed_all(seed)
 torch.set_float32_matmul_precision('medium')
 
-def get_lr_scheduler_config(optimizer, settings):
+def get_lr_scheduler_config(optimizer, metrics, settings):
     '''
     set up learning rate scheduler
     Args:
@@ -49,7 +49,7 @@ def get_lr_scheduler_config(optimizer, settings):
 
     return {
             'scheduler': scheduler,
-            'monitor': 'metrics/batch/train_loss',
+            'monitor': f'metrics/batch/val_{metrics}',
             'interval': 'epoch',
             'frequency': 1,
         }
@@ -120,7 +120,7 @@ def get_gpu_settings(gpu_ids, n_gpu):
 
     return "gpu", devices, strategy
 
-def get_basic_callbacks(settings):
+def get_basic_callbacks(settings, metrics):
     '''
     Get basic callbacks for pytorch-lightning trainer:
     Args: 
@@ -139,14 +139,14 @@ def get_basic_callbacks(settings):
         filename='best_model_{epoch:03d}',
         auto_insert_metric_name=False,
         save_top_k=1,
-        monitor='metrics/batch/train_loss',
-        mode='min',
+        monitor=f'metrics/epoch/val_{metrics}',
+        mode='max',
         verbose=True
     )
     if settings['early_stopping']:
         early_stopping_callback = EarlyStopping(
-            monitor='metrics/batch/train_loss',  # Metric to monitor for improvement
-            mode='min',  # Choose 'min' or 'max' depending on the metric (e.g., 'min' for loss, 'max' for accuracy)
+            monitor=f'metrics/epoch/val_{metrics}',  # Metric to monitor for improvement
+            mode='max',  # Choose 'min' or 'max' depending on the metric (e.g., 'min' for loss, 'max' for accuracy)
             patience=10,  # Number of epochs with no improvement before stopping
         )
         return [last_ckpt_callback, best_ckpt_calllback, lr_callback, early_stopping_callback]
