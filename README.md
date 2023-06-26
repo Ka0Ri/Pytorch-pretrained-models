@@ -122,7 +122,7 @@ import yaml
 from pytorch_lightning.loggers import NeptuneLogger
 from Modules.train import DataModule, Model, get_trainer
 ```
-1. Load Config file and Neptune logging repository:
+2. Load Config file and Neptune logging repository:
 
 ```Python
 with open(args.config_file, 'r') as stream:
