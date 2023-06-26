@@ -228,6 +228,7 @@ The configurations, a [config.yaml](Modules/config.yaml), encompassing the model
 | n_gpu | num gpus  | training_settings  | int |
 | img_size | size of image to model  | training_settings  | int |
 | loss | loss function  | training_settings  | str: "ce" (classification/segmentation), "dice", "mse", "none"(detection) |
+| metric | metric name  | training_settings  | str: "accuracy", "dice", "mAP" |
 | ckpt_path | path to check-points  | training_settings  | str |
 | n_epoch | num epoch  | training_settings  | int |
 | n_batch | batch size  | training_settings  | int |
