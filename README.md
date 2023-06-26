@@ -60,7 +60,8 @@ sudo systemctl stop docker
 sudo systemctl start docker
 ```
 2. Pull the Image
-```
+```bash
+docker build --tag pytorch-finetune:runtime --file Dockerfile .
 ```
 3. Check docker environment
 ```bash
