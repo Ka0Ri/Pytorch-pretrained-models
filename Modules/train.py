@@ -26,7 +26,7 @@ torch.cuda.manual_seed(seed)
 torch.cuda.manual_seed_all(seed)
 torch.set_float32_matmul_precision('medium')
 
-def get_lr_scheduler_config(optimizer, metrics, settings):
+def get_lr_scheduler_config(optimizer, settings, metrics):
     '''
     set up learning rate scheduler
     Args:
@@ -153,7 +153,7 @@ def get_basic_callbacks(settings, metrics):
     else: 
         return [last_ckpt_callback, best_ckpt_calllback, lr_callback]
 
-def get_trainer(settings, logger) -> Trainer:
+def get_trainer(settings, logger, metrics) -> Trainer:
     '''
     Get trainer and logging for pytorch-lightning trainer:
     Args: 
@@ -163,7 +163,7 @@ def get_trainer(settings, logger) -> Trainer:
         trainer: trainer object
         logger: neptune logger object
     '''
-    callbacks = get_basic_callbacks(settings)
+    callbacks = get_basic_callbacks(settings, metrics)
     accelerator, devices, strategy = get_gpu_settings(settings['gpu_ids'], settings['n_gpu'])
 
     trainer = Trainer(
@@ -378,8 +378,8 @@ class Model(LightningModule):
         self.valid_metrics.reset()
             
     def configure_optimizers(self):
-        optimizer = get_optimizer(self.model.parameters(), self.train_settings)
-        lr_scheduler_config = get_lr_scheduler_config(optimizer, self.train_settings)
+        optimizer = get_optimizer(self.model.parameters(), self.train_settings, self.metrics_name)
+        lr_scheduler_config = get_lr_scheduler_config(optimizer, self.train_settings, self.metrics_name)
 
         return {"optimizer": optimizer, "lr_scheduler": lr_scheduler_config}
     
@@ -402,7 +402,7 @@ if __name__ == "__main__":
     neptune_logger = NeptuneLogger(
             project=PARAMS['logger']['project'],
             # with_id="AIS-113",
-            api_key=PARAMS['logger']['api_key'],
+            # api_key=PARAMS['logger']['api_key'],
             tags=PARAMS['logger']['tags'],
             log_model_checkpoints=False
         )
