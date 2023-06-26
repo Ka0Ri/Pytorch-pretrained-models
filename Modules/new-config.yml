@@ -19,6 +19,7 @@ training_settings:
         gpu_ids: [0]
         n_gpu: 1
         loss: ce
+        metric: accuracy
         ckpt_path: "./mode/test"
         n_epoch: 5
         n_batch: 64

@@ -26,7 +26,7 @@ torch.cuda.manual_seed(seed)
 torch.cuda.manual_seed_all(seed)
 torch.set_float32_matmul_precision('medium')
 
-def get_lr_scheduler_config(optimizer, settings, metrics):
+def get_lr_scheduler_config(optimizer, settings):
     '''
     set up learning rate scheduler
     Args:
@@ -49,7 +49,7 @@ def get_lr_scheduler_config(optimizer, settings, metrics):
 
     return {
             'scheduler': scheduler,
-            'monitor': f'metrics/batch/val_{metrics}',
+            'monitor': f'metrics/batch/val_{settings["metric"]}',
             'interval': 'epoch',
             'frequency': 1,
         }
@@ -120,7 +120,7 @@ def get_gpu_settings(gpu_ids, n_gpu):
 
     return "gpu", devices, strategy
 
-def get_basic_callbacks(settings, metrics):
+def get_basic_callbacks(settings):
     '''
     Get basic callbacks for pytorch-lightning trainer:
     Args: 
@@ -139,13 +139,13 @@ def get_basic_callbacks(settings, metrics):
         filename='best_model_{epoch:03d}',
         auto_insert_metric_name=False,
         save_top_k=1,
-        monitor=f'metrics/epoch/val_{metrics}',
+        monitor=f'metrics/epoch/val_{settings["metric"]}',
         mode='max',
         verbose=True
     )
     if settings['early_stopping']:
         early_stopping_callback = EarlyStopping(
-            monitor=f'metrics/epoch/val_{metrics}',  # Metric to monitor for improvement
+            monitor=f'metrics/epoch/val_{settings["metric"]}',  # Metric to monitor for improvement
             mode='max',  # Choose 'min' or 'max' depending on the metric (e.g., 'min' for loss, 'max' for accuracy)
             patience=10,  # Number of epochs with no improvement before stopping
         )
@@ -153,7 +153,7 @@ def get_basic_callbacks(settings, metrics):
     else: 
         return [last_ckpt_callback, best_ckpt_calllback, lr_callback]
 
-def get_trainer(settings, logger, metrics) -> Trainer:
+def get_trainer(settings, logger) -> Trainer:
     '''
     Get trainer and logging for pytorch-lightning trainer:
     Args: 
@@ -163,7 +163,7 @@ def get_trainer(settings, logger, metrics) -> Trainer:
         trainer: trainer object
         logger: neptune logger object
     '''
-    callbacks = get_basic_callbacks(settings, metrics)
+    callbacks = get_basic_callbacks(settings)
     accelerator, devices, strategy = get_gpu_settings(settings['gpu_ids'], settings['n_gpu'])
 
     trainer = Trainer(
@@ -248,19 +248,17 @@ class Model(LightningModule):
             self.model = WrappingClassifier(model_configs=self.architect_settings)
             self.train_metrics = torchmetrics.Accuracy(task='multiclass', num_classes=self.architect_settings['n_cls'])
             self.valid_metrics = torchmetrics.Accuracy(task='multiclass', num_classes=self.architect_settings['n_cls'])
-            self.metrics_name = 'accuracy'
         elif(self.task == 'segmentation'):
             self.model = WrappingSegment(model_configs=self.architect_settings)
             self.train_metrics = torchmetrics.Dice(num_classes=self.architect_settings['n_cls'])
             self.valid_metrics = torchmetrics.Dice(num_classes=self.architect_settings['n_cls'])
-            self.metrics_name = 'dice'
         elif(self.task == 'detection'):
             self.model = WrappingDetector(model_configs=self.architect_settings)
             self.train_metrics = MeanAveragePrecision()
             self.valid_metrics = MeanAveragePrecision()
-            self.metrics_name = 'mAP'
         else:
             raise NotImplementedError()
+        self.metrics_name = self.train_settings['metric']
 
     def setup(self, stage: str):
         if stage == "fit":
@@ -378,8 +376,8 @@ class Model(LightningModule):
         self.valid_metrics.reset()
             
     def configure_optimizers(self):
-        optimizer = get_optimizer(self.model.parameters(), self.train_settings, self.metrics_name)
-        lr_scheduler_config = get_lr_scheduler_config(optimizer, self.train_settings, self.metrics_name)
+        optimizer = get_optimizer(self.model.parameters(), self.train_settings)
+        lr_scheduler_config = get_lr_scheduler_config(optimizer, self.train_settings)
 
         return {"optimizer": optimizer, "lr_scheduler": lr_scheduler_config}
     
