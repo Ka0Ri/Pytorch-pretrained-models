@@ -87,7 +87,7 @@ class WrappingClassifier(nn.Module):
         name = self.backbone_name
         assert name in MODEL.keys(), "Model %s not found" % name
 
-        if self.is_pretrained:
+        if self.is_pretrained: #init with pretrained weights
             base_model = MODEL[name](weights=WEIGHTS[name].IMAGENET1K_V1)
         else:
             base_model = MODEL[name](weights=None)

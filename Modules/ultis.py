@@ -29,6 +29,32 @@ class Standardize(object):
     def __repr__(self):
         return self.__class__.__name__ + '()'
 
+class base_dataset(Dataset):
+    '''
+    mode: 'train', 'val', 'test'
+    data_path: path to data folder
+    imgsize: size of image
+    transform: transform function
+    '''
+    def __init__(self, mode, data_path, imgsize=224, transform=None):
+        self.data_path = data_path
+        self.mode = mode
+        self.transform = transform
+        self.img_list = None
+
+    def __len__(self):
+        return len(self.img_list)
+    
+    def __getitem__(self, index):
+        '''
+        return tran_image, target, original image
+        '''
+        image = self.img_list[index]
+        # trans_img = self.transform(image)
+        pass
+      
+       
+
 class LungCTscan(Dataset):
     def __init__(self, mode, data_path, imgsize=224, transform=None):
         img_list = sorted(glob.glob(data_path + '/2d_images/*.tif'))
@@ -164,6 +190,7 @@ class CIFAR10read(Dataset):
             dataset = CIFAR10(root=data_path, download=True, train=True)
         data = getattr(dataset, 'data')
         labels = getattr(dataset, 'targets')
+
         n = len(data)
         if(mode == 'train'):
             self.input_images = np.array(data[:int(n * 0.8)])
@@ -281,7 +308,7 @@ class DubaiAerialread(Dataset):
             image = transformed["image"]
             mask = transformed["mask"]
 
-        return image, mask.squeeze(0)
+        return image, mask.squeeze(0), image
     
 #---------------------------------------lOSS FUNCTION-----------------------------------------------
 
