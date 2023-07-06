@@ -1,4 +1,10 @@
 # Pytorch-pretrained-models (AISeed)
+[![Python 3.9](https://img.shields.io/badge/python-3.9-green.svg)](https://www.python.org/)
+[![Pytorch 3.9](https://img.shields.io/badge/pytorch-1.12-orange.svg?logo=pytorch)](https://pytorch.org/get-started/previous-versions/)
+[![Lightning](https://img.shields.io/badge/-Lightning-792ee5?logo=pytorchlightning&logoColor=white)](https://www.pytorchlightning.ai/index.html)
+[<img src="https://img.shields.io/badge/Dockerhub-blue.svg?logo=docker&logoColor=white">](https://www.docker.com/)
+<!-- [<img src="https://img.shields.io/badge/LABEL-MESSAGE-COLOR.svg?logo=LOGO">](<LINK>) -->
+
 The project aims to provide a framework for efficiently utilizing pre-trained models in PyTorch using the PyTorch Lightning library. Additionally, it incorporates the Neptune logger. This project serves two primary purposes: to facilitate rapid testing of new datasets and to act as a framework for downstream tasks by leveraging pre-trained models.
 
 # Features
