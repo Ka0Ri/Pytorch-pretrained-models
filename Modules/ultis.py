@@ -202,3 +202,4 @@ def get_trainer(settings, logger):
         callbacks=callbacks,
     )
     return trainer
+

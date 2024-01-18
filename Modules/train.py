@@ -1,7 +1,7 @@
 import torch
 from torchvision.utils import make_grid, draw_bounding_boxes, draw_segmentation_masks
 import torch.nn.functional as F
-from Detector import WrappingDetector
+from Modules.model.Detector import WrappingDetector
 from Classifier import WrappingClassifier
 from ultis import *
 from pytorch_lightning import LightningModule

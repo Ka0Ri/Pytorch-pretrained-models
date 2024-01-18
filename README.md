@@ -7,20 +7,21 @@
 
 The project aims to provide a framework for efficiently utilizing pre-trained models in PyTorch using the PyTorch Lightning library. Additionally, it incorporates the Neptune logger. This project serves two primary purposes: to facilitate rapid testing of new datasets and to act as a framework for downstream tasks by leveraging pre-trained models.
 
-# Features
+## Features
 - Integration of pre-trained models into PyTorch Lightning
 - Support for seamless experimentation with new datasets
 - Logging and monitoring capabilities through Neptune logger
 - Simplified framework for downstream tasks with pre-trained models
 
-# Installation
-## prequisite
+## Installation
+
+### prequisite
 - Python=3.9
 - CUDA: 11.2/11.3
 - Pytorch framwork: 1.12.1, pytorch-lightning
 - Others: numpy, opencv, scipy
 - dashboard: neptune ai (for training), gradio (for testing)
-## Environments Settings
+### Environments Settings
 1. Install [Anaconda](https://www.anaconda.com/)
 - create a new environment:
 ```
@@ -33,11 +34,9 @@ git clone https://github.com/Ka0Ri/Pytorch-pretrained-models.git
 ```
 3. Install dependencies: 
 ```bash
-conda install pytorch==1.12.1 torchvision==0.13.1 cudatoolkit=11.3 -c pytorch
-
 pip install -r requirements.txt
 ```
-## Docker (Linux only)
+### Docker (Linux only)
 1. [Install Docker](https://docs.docker.com/engine/install/ubuntu/)
 - Download Docker
 ```bash
@@ -75,46 +74,53 @@ docker run --rm -it --init \
   --gpus=all \
   pytorch-finetune:runtime nvidia-smi
 ```
-#
 
-It facilitates three distinct modes of operation: (1) inference utilizing the complete model, (2) fine-tuning with a particular class within the standard layers. Table 1 presents comprehensive information regarding the supported models, while the subsequent section outlines the configurations to be provided.
-- `Classifier.py`: [WrappingClassifier](Modules/Classifier.py#L59) Wrapping Head for classification task.
-- `Detector.py`: [WrappingDetector](Modules/Detector.py#L30) Wrapping Head for object detection task.
-- `Segment.py`: [WrappingSegment](Modules/Segment.py#L22) Wrapping Head for semantic segmentation task.
+## Usage
+
+### Model
+
+We implement 3 wrappping classes based on 3 tasks, classification, detection and segmentation.
+
+- `Classifier.py`: [ClassificationModel](Modules/model/Classifier.py) Wrapping Head for classification task.
+- `Detector.py`: [DetectionModel](Modules/model/Detector.py) Wrapping Head for object detection task.
+- `Segment.py`: [SegmentModel](Modules/model/Segment.py) Wrapping Head for semantic segmentation task.
 
 ![alt text](assets/test.png)
+
+Table 1 shows the supported models, [torcvision.models](https://pytorch.org/vision/0.8/models.html), while the subsequent section outlines the configurations to be provided.
 
 <table>
 <tr>
 <td colspan=1>
-    Table 1. Supported models
+    Table 1. Supported models.
 </td>
 
-| Name  | Description |Metrics | Params |
-| ------------- | ------------- | ------------- | ------------- |
-| `Classification` | Model| Accuracy | milions |
-| resnet | [ResNet](https://arxiv.org/abs/1512.03385)  |-  | s: 11.5, m: 28.0, l: 62.6 |
-| efficientnet | [Efficient Net v2](https://arxiv.org/abs/2104.00298)  | -  | s: 21.9, m: 54.6, l: 118|
-| vgg | [Very Deep CNN](https://arxiv.org/abs/1409.1556)  | -  | s: 9.5, m: 9.7, l: 20.3 |
-| densenet | [DenseNet](https://arxiv.org/abs/1608.06993)  |  - | s: 8.1, m: 31.7, l: 22.0|
-| wide_resnet | [Wide ResNet](https://arxiv.org/abs/1605.07146)  | -  | s: 71.3, m: 129|
-| inception | [Inception v3](https://arxiv.org/abs/1512.00567)  |  - | 29.6 |
-| mobilenet | [Mobile Net v3](https://arxiv.org/abs/1905.02244)  | -  | s: 1.3, m:, l: 4.0|
-| shufflenet | [Shuffle Net](https://arxiv.org/abs/1807.11164)  |  - | s: 1.5, m: 2.4, l: 9.8 |
-| convnext | [ConvNext](https://arxiv.org/abs/2201.03545)  | -  | s: 28.5, m: 88.7, l: 198 |
-| resnext | [ResNext](https://arxiv.org/abs/1611.05431v2)  |  - | s: 27.5, m: 91.2, l: 85.9 |
-| vit | [Vision Transformer](https://arxiv.org/abs/2010.11929)  |  - | s: 86.4, m: 304, l: |
-| swin | [Swin Transformer](https://arxiv.org/abs/2103.14030)  |  - | s: 28.2, m: 49.5, l: 87.9|
-| `Detection` | Model| mAP | milions |
-| retinanet | [Retina Net](https://arxiv.org/abs/1708.02002)  |  - | m: 32.2, l: 36.4 |
-| ssd | [Single Shot Detection](https://arxiv.org/abs/1512.02325)  |  - | s: 3.8, m: 25.4 |
-| fasterrcnn |[Faster Region Proposlal CNN](https://arxiv.org/abs/1506.01497)  | -  | s: 20.0, m: 42.4 |
-| `Segmentation` | Model| dice | milions |
-| fcn | [Fully CNN](https://arxiv.org/abs/1411.4038)  |  - | m: 28.0, l: 47.0 |
-| deeplab | [Atrous Convolution](https://arxiv.org/abs/1706.05587) | -  | m: 23.5, l: 87.9 |
-| maskrcnn | [Masked RCNN](https://arxiv.org/abs/1703.06870) | - | s: 39.5 |
-#
-## Training Interface
+| class  | models |weight | version |
+| ------------- | ------------- | ------------- |------------- |
+| `Classification` | | | |
+| [models.ResNet](https://pytorch.org/vision/0.8/_modules/torchvision/models/resnet.html) | resnet{x}|ResNet{x}_Weights.DEFAULT|`18` `34` `50` `34` `101` `152`|
+| [models.DenseNet](https://pytorch.org/vision/0.8/_modules/torchvision/models/densenet.html) | densenet{x}|DenseNet{x}_Weights.DEFAULT|`121` `169` `161` `201` |
+| [models.Inception3](https://pytorch.org/vision/0.8/_modules/torchvision/models/inception.html) | inception_v3|Inception_V3_Weights.DEFAULT| |
+| [models.EfficientNet](https://pytorch.org/vision/main/_modules/torchvision/models/efficientnet.html) | efficientnet_b{x}|EfficientNet_B{x}_Weights.DEFAULT| `0` - `7` |
+| [models.MobileNetV3](https://pytorch.org/vision/main/_modules/torchvision/models/mobilenetv3.html) | mobilenet_v3_{x}|MobileNet_V3_{x}_Weights.DEFAULT| `large` `small` |
+| [models.MobileNetV3](https://pytorch.org/vision/main/_modules/torchvision/models/ShuffleNetV2.html) | shufflenet_v2_x{x}|ShuffleNet_V2_X{x}_Weights.DEFAULT| `0_5` `1_0` `1_5` `2_0` |
+| [models.ConvNeXt](https://pytorch.org/vision/main/_modules/torchvision/models/convnext.html) | convnext_{x}|ConvNeXt_{x}_Weights.DEFAULT| `tiny` `small` `base` `large` |
+| [models.VisionTransformer](https://pytorch.org/vision/main/models/vision_transformer.html) | vit_{x}|VIT_{x}_Weights.DEFAULT| `b_16` `b_32` `l_16` `l_32` `h_14` |
+| [models.SwinTransformer](https://pytorch.org/vision/main/models/swin_transformer.html) | swin_{x}|Swin_{x}_Weights.DEFAULT| `t` `s` `b` |
+| [models.SwinTransformer](https://pytorch.org/vision/main/models/swin_transformer.html) | swin_v2_{x}|Swin_V2_{x}_Weights.DEFAULT| `t` `s` `b` |
+| `Detection` | | | |
+| [models.detection.FasterRCNN](https://pytorch.org/vision/main/_modules/torchvision/models/detection/faster_rcnn.html) | fasterrcnn_{x}|FasterRCNN_{x}_Weights.DEFAULT| `resnet50_fpn` `resnet50_fpn_v2` `mobilenet_v3_large_fpn` `mobilenet_v3_large_320_fpn` |
+| [models.detection.RetinaNet](https://pytorch.org/vision/main/_modules/torchvision/models/detection/retinanet.html) | retinanet_{x}|RetinaNet_{x}_Weights.DEFAULT| `resnet50_fpn` `resnet50_fpn_v2`  |
+| [models.detection.MaskRCNN](https://pytorch.org/vision/main/_modules/torchvision/models/detection/mask_rcnn.html) | maskrcnn_{x}|MaskRCNN_{x}_Weights.DEFAULT| `resnet50_fpn` `resnet50_fpn_v2`  |
+| `Segmentation` | | | |
+| [models.segmentation.FCN](https://pytorch.org/vision/main/_modules/torchvision/models/segmentation/fcn.html) | fcn_resnet{x}|FCN_ResNet{x}_Weights.DEFAULT| `50` `101`  |
+| [models.segmentation.DeepLabV3](https://pytorch.org/vision/main/_modules/torchvision/models/segmentation/deeplabv3.html) | deeplabv3_{x}|DeepLabV3_{x}_Weights.DEFAULT| `resnet50` `resnet101` `mobilenet_v3_large` |
+
+### Dataset
+
+
+
+### Training Interface
 Examples of training Wrapping Network can be found in [ultis.py](Modules/ultis.py) and train file [train.py](train.py), we config hyper-parameters in [config.yml](config/new-config.yml) file
 
 - `ultis.py`: Three pre-defined datasets have been established, each serving as a demonstration for the training-testing process of a specific task, [CIFAR10](Modules/ultis.py) for classification, [Lung CT-scan](Modules/ultis.py) for object detection, and [PennFudan](Modules/ultis.py) for binary object segmentation.
