@@ -14,6 +14,14 @@ def normalize_image(image):
 def collate_fn(batch):
     return tuple(zip(*batch))
 
+def collate_fn_dict(batch):
+    # batch: list of dict
+    # return: dict of list
+    batch_dict = {}
+    for key in batch[0].keys():
+        batch_dict[key] = [sample[key] for sample in batch]
+    return batch_dict
+    
 class Standardize(object):
     """ Standardizes a 'PIL Image' such that each channel
         gets zero mean and unit variance. """
@@ -71,63 +79,47 @@ class DataModule(LightningDataModule):
     Returns:
         Train/Test/Val data loader
     '''
-    def __init__(self, dataset,
-                 data_settings, 
-                 training_settings):
+    def __init__(self, 
+                dataset: base_dataset,
+                batch_size: int,
+                num_workers: int, 
+                collate_fn=None):
+        
+        self.dataset = dataset
+        self.batch_size = batch_size
+        self.num_workers = num_workers
+        self.collate_fn = collate_fn
         super().__init__()
 
-        
-
-        if(self.dataset in ["Apple", "PennFudan"]):
-            self.collate_fn = collate_fn
-
-       
-    def _split(self, data, size=[0.8, 0.1, 0.1], random_state=42):
-        '''
-        Split data into train and test set
-        Args:
-            data: data to be split
-            test_size: size of test set
-            shuffle: whether to shuffle data before splitting
-            random_state: random seed
-        Returns:
-            train_data: training set
-            test_data: test set
-        '''
-        generator = torch.Generator().manual_seed(random_state)
-        train_data, val_data, test_data = torch.utils.data.random_split(data, size, generator=generator)
-        return train_data, val_data, test_data
-        
+   
     def setup(self, stage: str):
-
+        
         if stage == "fit":
-            self.Train_dataset = self.data_class[self.dataset](mode="train", data_path=self.root_dir,
-                                                imgsize=self.img_size, transform=self.train_transform)
-            self.Val_dataset = self.data_class[self.dataset](mode="val", data_path=self.root_dir,
-                                                imgsize=self.img_size, transform=self.val_transform)
-                
-        # Assign test dataset for use in dataloader(s)
-        if stage == "test":
-            self.Test_dataset = self.data_class[self.dataset](mode="test", data_path=self.root_dir,
-                                                imgsize=self.img_size, transform=self.val_transform)
+            generator = torch.Generator().manual_seed(42)
+            self.train_set, self.val_set = torch.utils.data.random_split(self.dataset, 
+                                                                        lengths=[0.8, 0.2], 
+                                                                        generator=generator)
+            
+        elif stage == "test":
+            self.test_set = self.dataset
            
     def train_dataloader(self):
-        return DataLoader(self.Train_dataset, 
+        return DataLoader(self.train_set, 
                           batch_size=self.batch_size, 
                           shuffle=True, 
-                          num_workers=8, 
+                          num_workers=self.num_workers, 
                           collate_fn=self.collate_fn)
 
     def val_dataloader(self):
-        return DataLoader(self.Val_dataset, 
+        return DataLoader(self.val_set, 
                           batch_size=self.batch_size, 
                           shuffle=False, 
-                          num_workers=8, 
+                          num_workers=self.num_workers, 
                           collate_fn=self.collate_fn)
     
     def test_dataloader(self):
-        return DataLoader(self.Test_dataset, 
+        return DataLoader(self.test_set, 
                           batch_size=self.batch_size, 
                           shuffle=False, 
-                          num_workers=8, 
+                          num_workers=self.num_workers, 
                           collate_fn=self.collate_fn)

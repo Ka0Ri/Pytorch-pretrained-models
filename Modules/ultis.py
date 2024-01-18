@@ -1,12 +1,13 @@
 import torch
 from torch import nn
-import random
+import torch.optim as optim
 import numpy as np
+import random
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint, EarlyStopping
 from torchmetrics.classification import Accuracy, Dice
 from torchmetrics.detection.mean_ap import MeanAveragePrecision
-
+from typing import Union, Tuple, List, Dict
 
 def seed_everything(SEED=42):
     random.seed(SEED)
@@ -17,33 +18,42 @@ def seed_everything(SEED=42):
    
 # For training
 
-def get_lr_scheduler_config(optimizer, settings):
+def get_lr_scheduler_config(optimizer: optim.Optimizer,
+                            metric_name: str,
+                            lr_scheduler: str='step',
+                            lr_step: int=10,
+                            lr_decay: float=0.8,
+                            frequency: int=1) -> Dict[str, Union[optim.lr_scheduler._LRScheduler, str, str, int]]:
     '''
-    set up learning rate scheduler
+    Set up learning rate scheduler configuration.
     Args:
         optimizer: optimizer
-        settings: settings hyperparameters
+        lr_scheduler: type of learning rate scheduler
+        lr_step: step size for scheduler
+        lr_decay: decay factor for scheduler
+        metric: metric for scheduler monitoring
     Returns:
-        lr_scheduler_config: [learning rate scheduler, configuration]
+        lr_scheduler_config: learning rate scheduler configuration
     '''
-    if settings['lr_scheduler'] == 'step':
-        scheduler = torch.optim.lr_scheduler.StepLR(
-            optimizer, step_size=settings['lr_step'], gamma=settings['lr_decay'])
-    elif settings['lr_scheduler'] == 'multistep':
-        scheduler = torch.optim.lr_scheduler.MultiStepLR(
-            optimizer, milestones=settings['lr_step'], gamma=settings['lr_decay'])
-    elif settings['lr_scheduler'] == 'reduce_on_plateau':
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, mode='max', factor=0.1, patience=10, threshold=0.0001)
+    scheduler_mapping = {
+        'step': lambda: torch.optim.lr_scheduler.StepLR(optimizer, step_size=lr_step, gamma=lr_decay),
+        'multistep': lambda: torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=lr_step, gamma=lr_decay),
+        'reduce_on_plateau': lambda: torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=0.1, patience=10, threshold=0.0001)
+    }
+
+    scheduler_creator = scheduler_mapping.get(lr_scheduler)
+
+    if scheduler_creator is not None:
+        scheduler = scheduler_creator()
     else:
         raise NotImplementedError
 
     return {
-            'scheduler': scheduler,
-            'monitor': f'metrics/batch/val_{settings["metric"]}',
-            'interval': 'epoch',
-            'frequency': 1,
-        }
+        'scheduler': scheduler,
+        'monitor': f'metrics/batch/val_{metric_name}',
+        'interval': 'epoch',
+        'frequency': frequency,
+    }
 
 
 class CustomMAP(MeanAveragePrecision):
@@ -63,68 +73,80 @@ class CustomMAP(MeanAveragePrecision):
       
         return metric['map']
 
-def get_metric(metric_name, num_classes):
-    '''
-    set up metric for evaluation
+def get_metric(metric_name: str, 
+               num_classes: int) -> Union[Accuracy, CustomMAP, Dice]:
+    """
+    Set up metric for evaluation
     Args:
         metric_name: name of metric
+        num_classes: number of classes for relevant metrics
     Returns:
         metric: metric function
-    '''
-    if metric_name == 'acc':
-        metric = Accuracy(num_classes=num_classes)
-    elif metric_name == 'mAP':
-        metric = CustomMAP()
-    elif metric_name == 'dice':
-        metric = Dice(num_classes=num_classes)
+    """
+    metric_mapping = {
+        'acc': lambda: Accuracy(num_classes=num_classes),
+        'mAP': CustomMAP,
+        'dice': lambda: Dice(num_classes=num_classes),
+    }
+
+    metric_creator = metric_mapping.get(metric_name)
+
+    if metric_creator is not None:
+        return metric_creator()
     else:
         raise NotImplementedError()
 
-    return metric
-
-def get_optimizer(parameters, settings):
-    '''
-    set up learning optimizer
+def get_optimizer(parameters: List[nn.Parameter],
+                    optimizer: str='adam',
+                    lr: int=0.0001,
+                    weight_decay: float=0.005,
+                    momentum: float=0.9) -> optim.Optimizer:
+    """
+    Set up learning optimizer
     Args:
         parameters: model's parameters
         settings: settings hyperparameters
     Returns:
         optimizer: optimizer
-    '''
-    if settings['optimizer'] == 'adam':
-        optimizer = torch.optim.Adam(parameters, lr=settings['lr'], weight_decay=settings['weight_decay'])
-    elif settings['optimizer'] == 'sgd':
-        optimizer = torch.optim.SGD(
-            parameters, lr=settings['lr'], weight_decay=settings['weight_decay'], momentum=settings['momentum'])
+    """
+    optimizer_mapping = {
+        'adam': lambda: optim.Adam(parameters, lr=lr, weight_decay=weight_decay),
+        'sgd': lambda: optim.SGD(parameters, lr=lr, weight_decay=weight_decay, momentum=momentum),
+    }
+
+    optimizer_creator = optimizer_mapping.get(optimizer)
+
+    if optimizer_creator is not None:
+        return optimizer_creator()
     else:
         raise NotImplementedError()
 
-    return optimizer
-
-def get_loss_function(type):
-    '''
-    set up loss function
+def get_loss_function(loss_type: str) -> nn.Module:
+    """
+    Set up loss function
     Args:
-        settings: settings hyperparameters,
+        loss_type: loss function type
     Returns:
         loss: loss function
-    '''
-    if type == "ce": 
-        loss = nn.CrossEntropyLoss()
-    elif type == "bce": 
-        loss = nn.BCELoss()
-    elif type == "mse": 
-        loss = nn.MSELoss()
-    elif type == "none": 
-        loss = None # only for task == detection
-    else: 
+    """
+    loss_mapping = {
+        'ce': nn.CrossEntropyLoss(),
+        'bce': nn.BCELoss(),
+        'mse': nn.MSELoss(),
+        'none': None,  # Only for task == detection
+    }
+
+    loss_function = loss_mapping.get(loss_type)
+
+    if loss_function is not None or loss_type == 'none':
+        return loss_function
+    else:
         raise NotImplementedError()
 
-    return loss
-
-def get_gpu_settings(gpu_ids, n_gpu):
+def get_gpu_settings(gpu_ids: list[int],
+                     n_gpu: int) -> Tuple[str, int, str]:
     '''
-    Get gpu settings for pytorch-lightning trainer:
+    Get GPU settings for PyTorch Lightning Trainer:
     Args:
         gpu_ids (list[int])
         n_gpu (int)
@@ -134,52 +156,55 @@ def get_gpu_settings(gpu_ids, n_gpu):
     if not torch.cuda.is_available():
         return "cpu", None, None
 
-    if gpu_ids is not None:
-        devices = gpu_ids
-        strategy = "ddp" if len(gpu_ids) > 1 else 'auto'
-    elif n_gpu is not None:
-        devices = n_gpu
-        strategy = "ddp" if n_gpu > 1 else 'auto'
-    else:
-        devices = 1
-        strategy = 'auto'
+    mapping = {
+        'devices': gpu_ids if gpu_ids is not None else n_gpu if n_gpu is not None else 1,
+        'strategy': 'ddp' if (gpu_ids or n_gpu) and (len(gpu_ids) > 1 or n_gpu > 1) else 'auto'
+    }
 
-    return "gpu", devices, strategy
+    return "gpu", mapping['devices'], mapping['strategy']
 
-def get_basic_callbacks(settings):
+
+def get_basic_callbacks(metric_name: str, 
+                        ckpt_path: str, 
+                        early_stopping: bool = False) -> List[Union[LearningRateMonitor, ModelCheckpoint, EarlyStopping]]:
     '''
-    Get basic callbacks for pytorch-lightning trainer:
-    Args: 
-        settings
+    Get basic callbacks for PyTorch Lightning Trainer.
+    Args:
+        metric_name: name of the metric
+        ckpt_path: path to save the checkpoints
+        early_stopping: flag for early stopping callback
     Returns:
-        last ckpt, best ckpt, lr callback, early stopping callback
+        callbacks: list of callbacks
     '''
-    lr_callback = LearningRateMonitor(logging_interval='epoch')
-    last_ckpt_callback = ModelCheckpoint(
-        filename='last_model_{epoch:03d}',
-        auto_insert_metric_name=False,
-        save_top_k=1,
-        monitor=None,
-    )
-    best_ckpt_calllback = ModelCheckpoint(
-        filename='best_model_{epoch:03d}',
-        auto_insert_metric_name=False,
-        save_top_k=1,
-        monitor=f'metrics/epoch/val_{settings["metric"]}',
-        mode='max',
-        verbose=True
-    )
-    if settings['early_stopping']:
-        early_stopping_callback = EarlyStopping(
-            monitor=f'metrics/epoch/val_{settings["metric"]}',  # Metric to monitor for improvement
-            mode='max',  # Choose 'min' or 'max' depending on the metric (e.g., 'min' for loss, 'max' for accuracy)
-            patience=10,  # Number of epochs with no improvement before stopping
-        )
-        return [last_ckpt_callback, best_ckpt_calllback, lr_callback, early_stopping_callback]
-    else: 
-        return [last_ckpt_callback, best_ckpt_calllback, lr_callback]
+    common_params = {
+        'dirpath': ckpt_path,
+        'filename': '{epoch:03d}',
+        'auto_insert_metric_name': False,
+        'save_top_k': 1,
+    }
+    mode = 'min' if metric_name == 'loss' else 'max'
+
+    callbacks_mapping = {
+        'last': ModelCheckpoint(**common_params, monitor=None),
+        'best': ModelCheckpoint(**common_params, monitor=f'metrics/epoch/val_{metric_name}', mode=mode, verbose=True),
+        'lr': LearningRateMonitor(logging_interval='epoch'),
+        'early_stopping': EarlyStopping(monitor=f'metrics/epoch/val_{metric_name}', mode=mode, patience=10),
+    }
+
+    callbacks = [callbacks_mapping[key] for key in ['last', 'best', 'lr']]
     
-def get_trainer(settings, logger):
+    if early_stopping:
+        callbacks.append(callbacks_mapping['early_stopping'])
+
+    return callbacks
+    
+def get_trainer(logger,
+                gpu_ids: list[int],
+                n_gpu: int,
+                metric_name: str,
+                ckpt_path: str,
+                early_stopping: bool=False,
+                max_epochs: int=10) -> Trainer:
     '''
     Get trainer and logging for pytorch-lightning trainer:
     Args: 
@@ -189,13 +214,12 @@ def get_trainer(settings, logger):
         trainer: trainer object
         logger: neptune logger object
     '''
-    callbacks = get_basic_callbacks(settings)
-    accelerator, devices, strategy = get_gpu_settings(settings['gpu_ids'], settings['n_gpu'])
+    callbacks = get_basic_callbacks(metric_name, ckpt_path, early_stopping)
+    accelerator, devices, strategy = get_gpu_settings(gpu_ids, n_gpu)
 
     trainer = Trainer(
         logger=[logger],
-        max_epochs=settings['n_epoch'],
-        default_root_dir=settings['ckpt_path'],
+        max_epochs=max_epochs,
         accelerator=accelerator,
         devices=devices,
         strategy=strategy,
