@@ -1,7 +1,7 @@
 import torch.nn as nn
 import torch
 from torchvision.models.segmentation import FCN, DeepLabV3
-import Modules.model.base_model as base_model                                
+import Modules.Model.base_model as base_model                                
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    
 def convrelu(in_channels, out_channels, kernel, stride, padding):
     return nn.Sequential(
@@ -83,13 +83,13 @@ class SegmentModel(base_model.BaseModel):
     '''
 
     def __init__(self, 
-                name,
                 model,
                 weight=None,
                 is_freeze=True,
                 is_full=False,
-                n_cls=2):
-        super().__init__(name, model, weight, is_freeze)
+                n_cls=2,
+                **kwargs):
+        super().__init__(model, weight, is_freeze)
 
         self._model_selection(is_full, n_cls)
         

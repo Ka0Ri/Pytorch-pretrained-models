@@ -4,7 +4,7 @@ from torchvision.models.detection.ssd import SSDHead, SSD
 from torchvision.models.detection.mask_rcnn import MaskRCNNPredictor
 from torchvision.models.detection import _utils
 from torchvision.models.detection import FasterRCNN, RetinaNet, MaskRCNN
-import Modules.model.base_model as base_model
+import Modules.Model.base_model as base_model
 
      
 class DetectionModel(base_model.BaseModel):
@@ -18,14 +18,14 @@ class DetectionModel(base_model.BaseModel):
     
     '''
 
-    def __init__(self, 
-                name,
+    def __init__(self,
                 model,
                 weight=None,
                 is_freeze=True,
                 is_full=False,
-                n_cls=2) -> None:
-        super().__init__(name, model, weight, is_freeze)
+                n_cls=2,
+                **kwargs) -> None:
+        super().__init__(model, weight, is_freeze)
 
         self._model_selection(is_full, n_cls)
 

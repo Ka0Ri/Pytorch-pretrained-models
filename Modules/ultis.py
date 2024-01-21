@@ -5,9 +5,15 @@ import numpy as np
 import random
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint, EarlyStopping
-from torchmetrics.classification import Accuracy, Dice
+from torchmetrics.classification import Accuracy, Dice, F1Score
 from torchmetrics.detection.mean_ap import MeanAveragePrecision
 from typing import Union, Tuple, List, Dict
+from torchmetrics import MetricCollection
+import torch.nn.functional as F
+from torchvision.utils import make_grid, draw_bounding_boxes, draw_segmentation_masks
+import cv2
+from pytorch_lightning.loggers import NeptuneLogger
+from PIL import Image
 
 def seed_everything(SEED=42):
     random.seed(SEED)
@@ -19,11 +25,9 @@ def seed_everything(SEED=42):
 # For training
 
 def get_lr_scheduler_config(optimizer: optim.Optimizer,
-                            metric_name: str,
+                            monitor: str,
                             lr_scheduler: str='step',
-                            lr_step: int=10,
-                            lr_decay: float=0.8,
-                            frequency: int=1) -> Dict[str, Union[optim.lr_scheduler._LRScheduler, str, str, int]]:
+                            **kwargs) -> Dict[str, Union[optim.lr_scheduler._LRScheduler, str, str, int]]:
     '''
     Set up learning rate scheduler configuration.
     Args:
@@ -36,9 +40,9 @@ def get_lr_scheduler_config(optimizer: optim.Optimizer,
         lr_scheduler_config: learning rate scheduler configuration
     '''
     scheduler_mapping = {
-        'step': lambda: torch.optim.lr_scheduler.StepLR(optimizer, step_size=lr_step, gamma=lr_decay),
-        'multistep': lambda: torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=lr_step, gamma=lr_decay),
-        'reduce_on_plateau': lambda: torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=0.1, patience=10, threshold=0.0001)
+        'step': lambda: torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, **kwargs),
+        'multistep': lambda: torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=10, **kwargs),
+        'reduce_on_plateau': lambda: torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, **kwargs)
     }
 
     scheduler_creator = scheduler_mapping.get(lr_scheduler)
@@ -50,9 +54,9 @@ def get_lr_scheduler_config(optimizer: optim.Optimizer,
 
     return {
         'scheduler': scheduler,
-        'monitor': f'metrics/batch/val_{metric_name}',
+        'monitor': monitor,
         'interval': 'epoch',
-        'frequency': frequency,
+        'frequency': 1,
     }
 
 
@@ -73,34 +77,39 @@ class CustomMAP(MeanAveragePrecision):
       
         return metric['map']
 
-def get_metric(metric_name: str, 
-               num_classes: int) -> Union[Accuracy, CustomMAP, Dice]:
+    
+def get_metrics(metric_names: list[str], num_classes: int, prefix: str) -> Dict[str, Union[Accuracy, CustomMAP, Dice]]:
     """
-    Set up metric for evaluation
+    Set up metrics for evaluation
     Args:
-        metric_name: name of metric
+        metric_names: list of metric names
         num_classes: number of classes for relevant metrics
     Returns:
-        metric: metric function
+        metrics: dictionary of metric instances
     """
     metric_mapping = {
-        'acc': lambda: Accuracy(num_classes=num_classes),
+        'accuracy': lambda: Accuracy(task='multiclass', num_classes=num_classes),
+        'F1': lambda: F1Score(task='multiclass', num_classes=num_classes),
         'mAP': CustomMAP,
         'dice': lambda: Dice(num_classes=num_classes),
     }
 
-    metric_creator = metric_mapping.get(metric_name)
+    metrics = {}
 
-    if metric_creator is not None:
-        return metric_creator()
-    else:
-        raise NotImplementedError()
+    for metric_name in metric_names:
+        metric_creator = metric_mapping.get(metric_name)
 
-def get_optimizer(parameters: List[nn.Parameter],
-                    optimizer: str='adam',
+        if metric_creator is not None:
+            metrics[metric_name] = metric_creator()
+        else:
+            raise NotImplementedError(f"Metric '{metric_name}' is not implemented.")
+
+    return MetricCollection(metrics, prefix=prefix)
+
+
+def get_optimizer(  optimizer: str='adam',
                     lr: int=0.0001,
-                    weight_decay: float=0.005,
-                    momentum: float=0.9) -> optim.Optimizer:
+                    **kwargs) -> optim.Optimizer:
     """
     Set up learning optimizer
     Args:
@@ -110,18 +119,18 @@ def get_optimizer(parameters: List[nn.Parameter],
         optimizer: optimizer
     """
     optimizer_mapping = {
-        'adam': lambda: optim.Adam(parameters, lr=lr, weight_decay=weight_decay),
-        'sgd': lambda: optim.SGD(parameters, lr=lr, weight_decay=weight_decay, momentum=momentum),
+        'adam': lambda params: optim.Adam(params, lr=lr, **kwargs),
+        'sgd': lambda params: optim.SGD(params, lr=lr, **kwargs),
     }
 
     optimizer_creator = optimizer_mapping.get(optimizer)
 
     if optimizer_creator is not None:
-        return optimizer_creator()
+        return optimizer_creator
     else:
         raise NotImplementedError()
 
-def get_loss_function(loss_type: str) -> nn.Module:
+def get_loss_function(loss_type: str) -> Union[nn.Module, None]:
     """
     Set up loss function
     Args:
@@ -143,8 +152,7 @@ def get_loss_function(loss_type: str) -> nn.Module:
     else:
         raise NotImplementedError()
 
-def get_gpu_settings(gpu_ids: list[int],
-                     n_gpu: int) -> Tuple[str, int, str]:
+def get_gpu_settings(gpu_ids: list[int]) -> Tuple[str, int, str]:
     '''
     Get GPU settings for PyTorch Lightning Trainer:
     Args:
@@ -156,6 +164,7 @@ def get_gpu_settings(gpu_ids: list[int],
     if not torch.cuda.is_available():
         return "cpu", None, None
 
+    n_gpu = len(gpu_ids)
     mapping = {
         'devices': gpu_ids if gpu_ids is not None else n_gpu if n_gpu is not None else 1,
         'strategy': 'ddp' if (gpu_ids or n_gpu) and (len(gpu_ids) > 1 or n_gpu > 1) else 'auto'
@@ -164,9 +173,11 @@ def get_gpu_settings(gpu_ids: list[int],
     return "gpu", mapping['devices'], mapping['strategy']
 
 
-def get_basic_callbacks(metric_name: str, 
+def get_basic_callbacks(mode: str,
+                        monitor: str,
                         ckpt_path: str, 
-                        early_stopping: bool = False) -> List[Union[LearningRateMonitor, ModelCheckpoint, EarlyStopping]]:
+                        early_stopping: bool = False,
+                        **kwargs) -> List[Union[LearningRateMonitor, ModelCheckpoint, EarlyStopping]]:
     '''
     Get basic callbacks for PyTorch Lightning Trainer.
     Args:
@@ -176,19 +187,12 @@ def get_basic_callbacks(metric_name: str,
     Returns:
         callbacks: list of callbacks
     '''
-    common_params = {
-        'dirpath': ckpt_path,
-        'filename': '{epoch:03d}',
-        'auto_insert_metric_name': False,
-        'save_top_k': 1,
-    }
-    mode = 'min' if metric_name == 'loss' else 'max'
-
+ 
     callbacks_mapping = {
-        'last': ModelCheckpoint(**common_params, monitor=None),
-        'best': ModelCheckpoint(**common_params, monitor=f'metrics/epoch/val_{metric_name}', mode=mode, verbose=True),
-        'lr': LearningRateMonitor(logging_interval='epoch'),
-        'early_stopping': EarlyStopping(monitor=f'metrics/epoch/val_{metric_name}', mode=mode, patience=10),
+        'last': ModelCheckpoint(dirpath=ckpt_path, filename='{epoch:03d}', monitor=None, **kwargs),
+        'best': ModelCheckpoint(dirpath=ckpt_path, filename='{epoch:03d}', monitor=monitor, mode=mode, **kwargs),
+        'lr': LearningRateMonitor(logging_interval='epoch', **kwargs),
+        'early_stopping': EarlyStopping(monitor=monitor, mode=mode, **kwargs),
     }
 
     callbacks = [callbacks_mapping[key] for key in ['last', 'best', 'lr']]
@@ -200,11 +204,12 @@ def get_basic_callbacks(metric_name: str,
     
 def get_trainer(logger,
                 gpu_ids: list[int],
-                n_gpu: int,
-                metric_name: str,
+                monitor: str,
                 ckpt_path: str,
+                mode: str,
+                max_epochs: int=10,
                 early_stopping: bool=False,
-                max_epochs: int=10) -> Trainer:
+                **kwargs) -> Trainer:
     '''
     Get trainer and logging for pytorch-lightning trainer:
     Args: 
@@ -214,10 +219,10 @@ def get_trainer(logger,
         trainer: trainer object
         logger: neptune logger object
     '''
-    callbacks = get_basic_callbacks(metric_name, ckpt_path, early_stopping)
-    accelerator, devices, strategy = get_gpu_settings(gpu_ids, n_gpu)
+    callbacks = get_basic_callbacks(mode, monitor, ckpt_path, early_stopping, **kwargs)
+    accelerator, devices, strategy = get_gpu_settings(gpu_ids)
 
-    trainer = Trainer(
+    return Trainer(
         logger=[logger],
         max_epochs=max_epochs,
         accelerator=accelerator,
@@ -225,5 +230,115 @@ def get_trainer(logger,
         strategy=strategy,
         callbacks=callbacks,
     )
-    return trainer
+
+def get_bboxes_overlay(images: torch.Tensor,
+                       predictions: torch.Tensor,
+                       targets: torch.Tensor=None,
+                       class_names: List[str]=None,
+                       num_of_images: int=16,
+                       threshold: float=0.5) -> torch.Tensor:
+    '''
+    Get bounding boxes overlay for images
+    Args:
+        images: images
+        targets: ground truth bounding boxes
+        predictions: predicted bounding boxes
+        class_names: list of class names
+        threshold: threshold for IoU
+    Returns:
+        images: images with bounding boxes overlay
+    '''
+    
+    images = images.clone().detach().cpu()
+    predictions = predictions.clone().detach().cpu()
+    n = min(num_of_images, images.shape[0])
+
+    predictions = [{k: v.cpu() for k, v in t.items()} for t in predictions[:n]]
+    images = [(t * 255).to(torch.uint8) for t in images[:n]]
+
+    boolean_masks = [out['masks'][out['scores']  > .75] > threshold for out in predictions]
+    reconstructions = [draw_segmentation_masks(image, mask.squeeze(1), alpha=0.9) 
+                            for image, mask in zip(images, boolean_masks)]
+    
+    reconstructions = torch.stack([F.interpolate(img.unsqueeze(0), size=(128, 128))
+                                    for img in reconstructions]).squeeze(1) 
+    reconstructions = make_grid(reconstructions, nrow= int(n ** 0.5))
+    reconstructions = reconstructions.numpy().transpose(1, 2, 0) / 255
+
+    return reconstructions
+
+def get_masks_overlay(images: torch.Tensor,
+                      predictions: torch.Tensor,
+                      targets: torch.Tensor=None,
+                      class_names: List[str]=None,
+                      num_of_images: int=16,
+                      threshold: float=0.5) -> torch.Tensor:
+    '''
+    Get masks overlay for images
+    Args:
+        images: images
+        targets: ground truth masks
+        predictions: predicted masks
+        class_names: list of class names
+        threshold: threshold for IoU
+    Returns:
+        images: images with masks overlay
+    '''
+    
+    images = images.clone().detach().cpu()
+    predictions = predictions.clone().detach().cpu()
+    n = min(num_of_images, images.shape[0])
+
+    predictions = [{k: v.cpu() for k, v in t.items()} for t in predictions[:n]]
+    images = [(t * 255).to(torch.uint8) for t in images[:n]]
+
+    boxes = [out['boxes'][out['scores'] > threshold] for out in predictions]
+    reconstructions = [draw_bounding_boxes(image, box, width=4, colors='red')
+                                    for image, box in zip(images, boxes)]
+    
+    reconstructions = torch.stack([F.interpolate(img.unsqueeze(0), size=(128, 128))
+                                    for img in reconstructions]).squeeze(1) 
+    reconstructions = make_grid(reconstructions, nrow= int(n ** 0.5))
+    reconstructions = reconstructions.numpy().transpose(1, 2, 0) / 255
+
+    return reconstructions
+
+def get_class_overlay(
+                    logger: NeptuneLogger,
+                    phase: str,
+                    images: torch.Tensor,
+                    predictions: torch.Tensor,
+                    targets: torch.Tensor=None,
+                    class_names: List[str]=None,
+                    num_of_images: int=16,
+                    **kwargs) -> torch.Tensor:
+    '''
+    Get class overlay for images
+    Args:
+        images: images
+        targets: ground truth class
+        predictions: predicted class
+        class_names: list of class names
+    Returns:
+        images: images with class overlay
+    '''
+    
+    images = images.clone().detach().cpu()
+    predictions = predictions.clone().detach().cpu()
+    n = min(num_of_images, images.shape[0])
+
+    predictions = torch.argmax(predictions, dim=-1)
+    images = (images.numpy() * 255).astype(np.uint8)
+   
+    images = [cv2.resize(image, (128, 128)) for image in images]
+    
+    draw_images = np.array([cv2.putText(image, str(label.item()) if class_names is None else class_names[int(label.item())], 
+                                        (64, 64), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 1)
+                                    for image, label in zip(images[:n], predictions[:n])])
+
+    reconstructions = torch.from_numpy(draw_images.transpose(0, 3, 1, 2))
+    reconstructions = make_grid(reconstructions, nrow= int(n ** 0.5))
+    reconstructions = reconstructions.numpy().transpose(1, 2, 0)
+
+    logger.experiment[phase].append(Image.fromarray(reconstructions))
 

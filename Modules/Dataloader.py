@@ -4,6 +4,7 @@ import torch
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader
 import numpy as np
+from typing import List, Dict, Union
 
 
 def normalize_image(image):
@@ -38,8 +39,8 @@ class base_dataset(Dataset):
     Base dataset class for all datasets
     '''
     def __init__(self,
-                data: list, 
-                targets: list=None,
+                data: Union[np.ndarray, List]=None,
+                targets: Union[np.ndarray, List]=None,
                 transform=None) -> None:
         
         self.data = data
@@ -49,20 +50,20 @@ class base_dataset(Dataset):
     def __len__(self) -> int:
         return len(self.data)
     
-    def __transform__(self, sample: dict) -> dict:
+    def __transform__(self, sample: Dict) -> Dict[str, Union[np.ndarray, torch.Tensor]]:
         if self.transform:
             transfromed = self.transform(sample['data'])
             sample.update({'data': transfromed})
 
         return sample
     
-    def __load_sample__(self, index) -> dict:
+    def __load_sample__(self, index) -> Dict[str, Union[np.ndarray, torch.Tensor]]:
         
         return {'data': self.data[index],
                 'target': self.targets[index],
                 'original': self.data[index]}
 
-    def __getitem__(self, index) -> dict:
+    def __getitem__(self, index) ->  Dict[str, Union[np.ndarray, torch.Tensor]]:
 
         sample = self.__load_sample__(index)
         sample = self.__transform__(sample)
@@ -80,28 +81,34 @@ class DataModule(LightningDataModule):
         Train/Test/Val data loader
     '''
     def __init__(self, 
-                dataset: base_dataset,
-                batch_size: int,
-                num_workers: int, 
-                collate_fn=None):
+                train_dataset: base_dataset,
+                test_dataset: base_dataset=None,
+                batch_size: int=32,
+                num_workers: int=4,
+                collate_fn=None,
+                **kwargs):
         
-        self.dataset = dataset
+        self.train_dataset = train_dataset
+        self.test_dataset = test_dataset
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.collate_fn = collate_fn
         super().__init__()
 
-   
     def setup(self, stage: str):
         
         if stage == "fit":
             generator = torch.Generator().manual_seed(42)
-            self.train_set, self.val_set = torch.utils.data.random_split(self.dataset, 
+            self.train_set, self.val_set = torch.utils.data.random_split(self.train_dataset, 
                                                                         lengths=[0.8, 0.2], 
                                                                         generator=generator)
             
         elif stage == "test":
-            self.test_set = self.dataset
+            if(self.test_dataset is None):
+                print("No test dataset is provided! Loading train dataset as test dataset")
+                self.test_set = self.train_dataset
+            else:
+                self.test_set = self.test_dataset
            
     def train_dataloader(self):
         return DataLoader(self.train_set, 

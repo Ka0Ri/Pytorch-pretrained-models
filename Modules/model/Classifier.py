@@ -2,7 +2,7 @@ import torch.nn as nn
 from torchvision.models import ResNet, DenseNet, EfficientNet, VGG, MobileNetV3, Inception3,\
                                 ShuffleNetV2, ConvNeXt, VisionTransformer, SwinTransformer  
                                 
-import Modules.model.base_model as base_model
+import Modules.Model.base_model as base_model
          
 class ClassificationModel(base_model.BaseModel):
     '''
@@ -16,13 +16,13 @@ class ClassificationModel(base_model.BaseModel):
     '''
 
     def __init__(self, 
-                name,
                 model,
                 weight=None,
                 is_freeze=True,
                 is_full=False,
-                n_cls=2):
-        super().__init__(name, model, weight, is_freeze)
+                n_cls=2,
+                **kwargs):
+        super().__init__(model, weight, is_freeze)
 
         self._model_selection(is_full, n_cls)
 

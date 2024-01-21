@@ -7,15 +7,12 @@ class BaseModel(nn.Module):
     - forward: forward pass
     - _model_selection: select model from pretrained model zoo
     """
-    def __init__(self, 
-                name,
+    def __init__(self,
                 model,
                 weight=None,
-                is_freeze=True,
-                **kwargs):
+                is_freeze=True):
         super(BaseModel, self).__init__()
 
-        self.backbone_name = name
         if weight is not None:
             self.meta = weight.meta
             self.preprocess = weight.transforms()
@@ -35,10 +32,10 @@ class BaseModel(nn.Module):
         assert any(map(lambda t: isinstance(self.model, t), types)), \
             "Model type not found in %s" % types
 
-    def forward(self, x, y=None):
+    def forward(self, *args):
         raise NotImplementedError()
     
-    def _model_selection(self, **kwargs):
+    def _model_selection(self, *args):
         raise NotImplementedError()
       
 
