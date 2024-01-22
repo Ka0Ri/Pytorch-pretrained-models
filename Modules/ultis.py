@@ -24,8 +24,7 @@ def seed_everything(SEED=42):
    
 # For training
 
-def get_lr_scheduler_config(optimizer: optim.Optimizer,
-                            monitor: str,
+def get_lr_scheduler_config(monitor: str,
                             lr_scheduler: str='step',
                             **kwargs) -> Dict[str, Union[optim.lr_scheduler._LRScheduler, str, str, int]]:
     '''
@@ -40,15 +39,15 @@ def get_lr_scheduler_config(optimizer: optim.Optimizer,
         lr_scheduler_config: learning rate scheduler configuration
     '''
     scheduler_mapping = {
-        'step': lambda: torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, **kwargs),
-        'multistep': lambda: torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=10, **kwargs),
-        'reduce_on_plateau': lambda: torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, **kwargs)
+        'step': lambda optimizer: torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, **kwargs),
+        'multistep': lambda optimizer: torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=10, **kwargs),
+        'reduce_on_plateau': lambda optimizer: torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, **kwargs)
     }
 
     scheduler_creator = scheduler_mapping.get(lr_scheduler)
 
     if scheduler_creator is not None:
-        scheduler = scheduler_creator()
+        scheduler = scheduler_creator
     else:
         raise NotImplementedError
 
@@ -89,7 +88,7 @@ def get_metrics(metric_names: list[str], num_classes: int, prefix: str) -> Dict[
     """
     metric_mapping = {
         'accuracy': lambda: Accuracy(task='multiclass', num_classes=num_classes),
-        'F1': lambda: F1Score(task='multiclass', num_classes=num_classes),
+        'F1': lambda: F1Score(task='multiclass', num_classes=num_classes, average='macro'),
         'mAP': CustomMAP,
         'dice': lambda: Dice(num_classes=num_classes),
     }
