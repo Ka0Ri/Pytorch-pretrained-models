@@ -121,20 +121,18 @@ Table 1 shows the supported models, [torcvision.models](https://pytorch.org/visi
 
 
 ### Training Interface
-Examples of training Wrapping Network can be found in [ultis.py](Modules/ultis.py) and train file [train.py](train.py), we config hyper-parameters in [config.yml](config/new-config.yml) file
+Examples of training Wrapping Network can be found in [ultis.py](Modules/ultis.py) and wrapped model class in [wrap_model.py](wrap_model.py), we config hyper-parameters in [config.yml](config/new-config.yml) file
 
-- `ultis.py`: Three pre-defined datasets have been established, each serving as a demonstration for the training-testing process of a specific task, [CIFAR10](Modules/ultis.py) for classification, [Lung CT-scan](Modules/ultis.py) for object detection, and [PennFudan](Modules/ultis.py) for binary object segmentation.
-- Trainning `train.py`: Our main module is [Model](Modules/train.py) that based on [pytorch-lightning](https://lightning.ai/pages/open-source/) and logged by [neptune-ai](https://neptune.ai/). As shown in the Figure above, we logged hyperparameters, metrics, and results from each run.
+- `ultis.py`:
+- Trainning `train.py`: Our main module is [WrapModel](Modules/wrap_model.py) that based on [pytorch-lightning](https://lightning.ai/pages/open-source/) and logged by [neptune-ai](https://neptune.ai/). As shown in the Figure above, we logged hyperparameters, metrics, and results from each run.
 
 ![alt text](assets/neptune.jpg)
 
 1. Import the necessary modules:
 ```python
-import yaml
-from pytorch_lightning.loggers import NeptuneLogger
-from Modules.train import DataModule, Model, get_trainer
+
 ```
-2. Load Config file and Neptune logging repository:
+1. Load Config file and Neptune logging repository:
 
 ```Python
 with open(args.config_file, 'r') as stream:
@@ -152,23 +150,15 @@ neptune_logger.log_hyperparams(params=PARAMS)
 3. Load Data
 ```Python
 # add key and new data class as followed, in Train.py DataModule class
-self.data_class = {
-   "CIFAR10": CIFAR10read,
-   "LungCT-Scan": LungCTscan,
-   "Dubai": DubaiAerialread,
-   "PennFudan": PennFudanDataset,
 
-   # New dataset
-   "New Dataset": NeWDatasetClass
-}
 ```
 ```Python
-data = DataModule(PARAMS['dataset_settings'], PARAMS['training_settings'], [None, None])
+
 ```
 4. Fine tune and evaluate moodel
 ```Python
-model = Model(PARAMS=PARAMS)
-trainer = get_trainer(PARAMS['training_settings'], neptune_logger)
+model = 
+trainer = 
 # train
 trainer.fit(model, data)
 # test
@@ -176,7 +166,7 @@ trainer.test(model, data)
 ```
 5. Run training in environment
 ```bash
-python Modules/train.py -c CONFIG_FILE
+
 ```
 6. Run training by Docker
 ```bash
@@ -189,9 +179,6 @@ docker run --rm -it --init \
 #
 
 ## Testing Interface
-We deploy (demo) our model using [Gradio](https://gradio.app/), which supports to visualize results from 3 tasks: classification, detection, and segmentation, depending on the selected model.
-
-![alt text](assets/gradio.png)
 1. Create a folder named `models` and save all checkpoints inside it. 
 2. Run app
 - by environment: 
@@ -209,7 +196,7 @@ docker run --rm -it --init \
 ```
 #
 ## Configuration (Config file)
-The configurations, a [config.yaml](Modules/config.yaml), encompassing the model architecture and training settings, as well as dataset settings. The "config.yaml" file follows a structured format, consisting of a list of dictionaries. Each dictionary within the list represents a distinct configuration and saves specific configuration parameters.
+The configurations, [config.yaml](Modules/new-config.yaml), encompassing the model architecture and training settings, as well as dataset settings. The "config.yaml" file follows a structured format, consisting of a list of dictionaries. Each dictionary within the list represents a distinct configuration.
 
 <table>
 <tr>
@@ -223,38 +210,30 @@ The configurations, a [config.yaml](Modules/config.yaml), encompassing the model
 | project | your project | logger |str  |
 | api_key | your account token | logger |str  |
 | tags | Runtime Tags | logger |[str]  |
-| task | task of experiment |  | str: "classification", "detection", "segmentation" |
+| log_params | log model's params |  | bool |
 | `Model` |
-| name | Model's name  | architect_settings  | string |
-| name | Pretrained model  | architect_settings/backbone  | string: "name"-"s/m/l" |
 | is_full | If True, use full model  | architect_settings/backbone  | Bool |
-| is_pretrained |  pretrained weights  | architect_settings/backbone  | Bool |
 | is_freeze | Freeze weights  | architect_settings/backbone  | Bool |
-| n_cls | num classes  | architect_settings | int |
 | `Dataset` |
-| name | Dataset name  | dataset_settings | string: "LungCT-Scan", "CIFAR10", "PennFudan" |
+| name | Dataset name  | dataset_settings | string |
 | path | path to dataset  | dataset_settings  | string |
-| img_size | size of image to model  | dataset_settings  | int |
+| n_cls | num classes  | dataset_settings | int |
+| num_workers | num workers to dataloader | dataset_settings  | int |
+| batch_size | batch size  | dataset_settings  | int |
 | `Training` |
 | gpu_ids | list of gpus used  | training_settings  | list: [0] |
-| n_gpu | num gpus  | training_settings  | int |
-| img_size | size of image to model  | training_settings  | int |
 | loss | loss function  | training_settings  | str: "ce" (classification/segmentation), "dice", "mse", "none"(detection) |
-| metric | metric name  | training_settings  | str: "accuracy", "dice", "mAP" |
+| metric | metric name  | training_settings  | [str]: "accuracy", "dice", "mAP" |
 | ckpt_path | path to check-points  | training_settings  | str |
-| n_epoch | num epoch  | training_settings  | int |
-| n_batch | batch size  | training_settings  | int |
-| num_workers | num workers to dataloader | training_settings  | int |
+| max_epochs | num epoch  | training_settings  | int |
 | optimizer | optimizer | training_settings  | str: "adam", "sgd" |
 | lr_scheduler | learning rate scheduler | training_settings  | str: "step", "multistep", "reduce_on_plateau" |
 | early_stopping | early stopping | training_settings  | bool |
 | lr | learning rate | training_settings  | float|
-| lr_step | learning rate step for decay| training_settings  | int|
-| lr_decay | learning rate decay rate | training_settings  | float|
-| momentum | momentum for optimizer | training_settings  | float|
-| weight_decay | weight decay for "sgd" | training_settings  | float|
+| monitor | monitoring metric | training_settings  | str|
+| mode | monitoring mode | training_settings  | str: 'max', 'min'|
 </tr>
-The understanding of the functioning of the configuration file is best obtained by referring to the actual "config.yaml" file. It is crucial to acknowledge that the module's flexibility is maintained by avoiding excessive hard coding of parameters. This is because fine-tuning and optimizing the parameters play a vital role in the development process. As part of our ongoing efforts to enhance the performance of the module, we anticipate making further refinements to the configurations. Consequently, it is likely that the config file will be subject to future updates to reflect these optimizations.
+The understanding of the functioning of the configuration file is best obtained by referring to the actual "config.yaml" file. It is crucial to acknowledge that the module's flexibility is maintained by avoiding excessive hard coding of parameters.
 
 # Contributing
 Contributions are welcome! If you find any issues or have suggestions for improvements, please open an issue or submit a pull request.

@@ -7,7 +7,7 @@ architect_settings:
         is_full: false
         is_freeze: false
 dataset_settings:
-        name: CIFAR10
+        name: PennFudanPed
         path: data/PennFudanPed
         n_cls: 2
         num_workers: 0
