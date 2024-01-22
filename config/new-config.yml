@@ -8,20 +8,20 @@ architect_settings:
         is_freeze: false
 dataset_settings:
         name: CIFAR10
-        path: data/CIFAR10
-        n_cls: 10
+        path: data/PennFudanPed
+        n_cls: 2
         num_workers: 0
-        batch_size: 64
+        batch_size: 8
 training_settings: 
         gpu_ids: [0]
-        loss: ce
-        metrics: [accuracy, 'F1']
-        ckpt_path: "./models/test"
+        loss: none
+        metrics: [map]
+        ckpt_path: "./models/test_faster_rcnn"
         max_epochs: 10
         optimizer: adam
         lr_scheduler: step
         lr: 0.0001
         early_stopping: false
-        monitor: "val_loss"
+        monitor: "train_loss"
         mode: 'min'
         

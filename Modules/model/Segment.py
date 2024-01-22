@@ -103,7 +103,7 @@ class SegmentModel(base_model.BaseModel):
                 num_ftrs = self.model.classifier[-1].in_channels
                 self.model.classifier[-1] = nn.Conv2d(num_ftrs, n_cls, 1)
 
-    def forward(self, x, y=None):
+    def forward(self, x):
         return self.model(x)['out']
 
 

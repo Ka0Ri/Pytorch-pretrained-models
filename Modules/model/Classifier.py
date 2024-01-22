@@ -68,5 +68,5 @@ class ClassificationModel(base_model.BaseModel):
                                        nn.Flatten(start_dim=1),
                                        nn.Linear(num_ftrs, n_cls))
 
-    def forward(self, x, y=None):
+    def forward(self, x):
         return self.model(x)

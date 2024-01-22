@@ -57,6 +57,9 @@ class DetectionModel(base_model.BaseModel):
         images = list(image for image in x)
         if y is not None:
             targets = [{k: v for k, v in t.items()} for t in y]
-            return self.model(images, targets)
+            loss_dict = self.model(images, targets)
+            loss = sum(loss for loss in loss_dict.values())
+            return loss, targets
         else:
-            return self.model(images)
+            preds = self.model(images)
+            return [{k: v for k, v in t.items()} for t in preds]

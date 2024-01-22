@@ -66,6 +66,20 @@ class CustomMAP(MeanAveragePrecision):
     def __init__(self):
         super().__init__()
 
+    def update(self, preds: torch.Tensor, target: torch.Tensor):
+        '''
+        Update metric
+        Args:
+            preds: predicted output
+            target: ground truth
+        '''
+        preds = [{k: v.cpu() for k, v in t.items()} for t in preds]
+        target = [{k: v.cpu() for k, v in t.items()} for t in target]
+        if 'scores' not in preds[0].keys():
+            preds = [{**t, 'scores': torch.ones_like(t['labels'])} for t in preds]
+
+        super().update(preds, target)
+
     def compute(self):
         '''
         Compute metric
@@ -88,8 +102,8 @@ def get_metrics(metric_names: list[str], num_classes: int, prefix: str) -> Dict[
     """
     metric_mapping = {
         'accuracy': lambda: Accuracy(task='multiclass', num_classes=num_classes),
-        'F1': lambda: F1Score(task='multiclass', num_classes=num_classes, average='macro'),
-        'mAP': CustomMAP,
+        'f1': lambda: F1Score(task='multiclass', num_classes=num_classes, average='macro'),
+        'map': CustomMAP,
         'dice': lambda: Dice(num_classes=num_classes),
     }
 
@@ -129,7 +143,26 @@ def get_optimizer(  optimizer: str='adam',
     else:
         raise NotImplementedError()
 
-def get_loss_function(loss_type: str) -> Union[nn.Module, None]:
+class NoLoss(nn.Module):
+    '''
+    Customized loss function for pytorch-lightning
+    '''
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, y_hat, y):
+        '''
+        Compute loss
+        Args:
+            y_hat: predicted output
+            y: ground truth
+        Returns:
+            loss: loss value
+        '''
+        
+        return -1
+
+def get_loss_function(loss_type: str) -> nn.Module:
     """
     Set up loss function
     Args:
@@ -141,12 +174,12 @@ def get_loss_function(loss_type: str) -> Union[nn.Module, None]:
         'ce': nn.CrossEntropyLoss(),
         'bce': nn.BCELoss(),
         'mse': nn.MSELoss(),
-        'none': None,  # Only for task == detection
+        'none': NoLoss(),  # Only for task == detection
     }
 
     loss_function = loss_mapping.get(loss_type)
 
-    if loss_function is not None or loss_type == 'none':
+    if loss_function is not None:
         return loss_function
     else:
         raise NotImplementedError()
@@ -230,7 +263,9 @@ def get_trainer(logger,
         callbacks=callbacks,
     )
 
-def get_bboxes_overlay(images: torch.Tensor,
+def get_masks_overlay(logger: NeptuneLogger,
+                       phase: str,
+                       images: torch.Tensor,
                        predictions: torch.Tensor,
                        targets: torch.Tensor=None,
                        class_names: List[str]=None,
@@ -247,13 +282,11 @@ def get_bboxes_overlay(images: torch.Tensor,
     Returns:
         images: images with bounding boxes overlay
     '''
-    
-    images = images.clone().detach().cpu()
-    predictions = predictions.clone().detach().cpu()
-    n = min(num_of_images, images.shape[0])
+    n = min(num_of_images, len(images))
 
     predictions = [{k: v.cpu() for k, v in t.items()} for t in predictions[:n]]
-    images = [(t * 255).to(torch.uint8) for t in images[:n]]
+    images = images[:n]
+    # images = [(t * 255).to(torch.uint8) for t in images[:n]]
 
     boolean_masks = [out['masks'][out['scores']  > .75] > threshold for out in predictions]
     reconstructions = [draw_segmentation_masks(image, mask.squeeze(1), alpha=0.9) 
@@ -264,13 +297,15 @@ def get_bboxes_overlay(images: torch.Tensor,
     reconstructions = make_grid(reconstructions, nrow= int(n ** 0.5))
     reconstructions = reconstructions.numpy().transpose(1, 2, 0) / 255
 
-    return reconstructions
+    logger.experiment[phase].append(Image.fromarray(reconstructions))
 
-def get_masks_overlay(images: torch.Tensor,
+def get_bboxes_overlay(logger: NeptuneLogger,
+                      phase: str,
+                      images: torch.Tensor,
                       predictions: torch.Tensor,
                       targets: torch.Tensor=None,
                       class_names: List[str]=None,
-                      num_of_images: int=16,
+                      num_of_images: int=4,
                       threshold: float=0.5) -> torch.Tensor:
     '''
     Get masks overlay for images
@@ -283,13 +318,11 @@ def get_masks_overlay(images: torch.Tensor,
     Returns:
         images: images with masks overlay
     '''
-    
-    images = images.clone().detach().cpu()
-    predictions = predictions.clone().detach().cpu()
-    n = min(num_of_images, images.shape[0])
+
+    n = min(num_of_images, len(images))
 
     predictions = [{k: v.cpu() for k, v in t.items()} for t in predictions[:n]]
-    images = [(t * 255).to(torch.uint8) for t in images[:n]]
+    images = [t.cpu() for t in images[:n]]
 
     boxes = [out['boxes'][out['scores'] > threshold] for out in predictions]
     reconstructions = [draw_bounding_boxes(image, box, width=4, colors='red')
@@ -298,9 +331,10 @@ def get_masks_overlay(images: torch.Tensor,
     reconstructions = torch.stack([F.interpolate(img.unsqueeze(0), size=(128, 128))
                                     for img in reconstructions]).squeeze(1) 
     reconstructions = make_grid(reconstructions, nrow= int(n ** 0.5))
-    reconstructions = reconstructions.numpy().transpose(1, 2, 0) / 255
+    reconstructions = reconstructions.numpy().transpose(1, 2, 0)
 
-    return reconstructions
+    logger.experiment[phase].append(Image.fromarray(reconstructions))
+ 
 
 def get_class_overlay(
                     logger: NeptuneLogger,

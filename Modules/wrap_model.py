@@ -4,6 +4,7 @@ from typing import Union
 from torchmetrics import MetricCollection
 import torch.nn as nn
 from typing import List
+from Modules.Model.Detector import DetectionModel
 
 
 class WrapModel(LightningModule):
@@ -53,8 +54,11 @@ class WrapModel(LightningModule):
             
     def forward(self, x, y=None):
 
+        if(y is not None):
+            return self.model(x, y)
         return self.model(x, y)
-    
+        
+        
     def on_train_epoch_start(self):
 
         self.train_output_list = []
@@ -63,11 +67,13 @@ class WrapModel(LightningModule):
     def training_step(self, batch, batch_idx):
 
         x, y = batch['data'], batch['target']
-       
-        y_hat = self(x)
-        loss = self.loss_fn(y_hat, y)
-        self.log('train_loss', loss, on_epoch=True, prog_bar=False)
+        if isinstance(self.model, DetectionModel):
+            loss, y_hat = self(x, y)
+        else:
+            y_hat = self(x)
+            loss = self.loss_fn(y_hat, y)
         self.train_metrics_fn.update(y_hat, y)
+        self.log('train_loss', loss, prog_bar=False)
         return loss
       
     def on_train_epoch_end(self):
