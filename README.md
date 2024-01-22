@@ -210,10 +210,10 @@ The configurations, [config.yaml](Modules/new-config.yaml), encompassing the mod
 | project | your project | logger |str  |
 | api_key | your account token | logger |str  |
 | tags | Runtime Tags | logger |[str]  |
-| log_params | log model's params |  | bool |
+| log_params | log model's params | logger | bool |
 | `Model` |
-| is_full | If True, use full model  | architect_settings/backbone  | Bool |
-| is_freeze | Freeze weights  | architect_settings/backbone  | Bool |
+| is_full | If True, use full model  | architect_settings  | Bool |
+| is_freeze | Freeze weights  | architect_settings  | Bool |
 | `Dataset` |
 | name | Dataset name  | dataset_settings | string |
 | path | path to dataset  | dataset_settings  | string |
